@@ -83,7 +83,20 @@ const tcpServer = net.createServer((socket) => {
 
 // --- Web Server (for the UI) ---
 const webServer = http.createServer((req, res) => {
-  let filePath = path.join(__dirname, 'assets', req.url === '/' ? 'index.html' : req.url);
+  let page = req.url === '/' ? 'index.html' : req.url;
+  if (req.url === '/diagnostics') {
+    page = 'diagnostics.html';
+  }
+
+  let filePath = path.join(__dirname, 'assets', page);
+
+  // Disallow directory traversal
+  if (!filePath.startsWith(path.join(__dirname, 'assets'))) {
+    res.writeHead(403);
+    res.end('Forbidden');
+    return;
+  }
+
   const extname = path.extname(filePath);
   let contentType = 'text/html';
   switch (extname) {

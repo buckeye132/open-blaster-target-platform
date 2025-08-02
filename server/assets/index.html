@@ -13,68 +13,43 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -->
-    <!DOCTYPE html><html><head><title>Nerf Target Diagnostic Tool</title>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Open Blaster Target Platform</title>
     <link rel="stylesheet" href="style.css">
-    </head><body>
-    <h1>Nerf Target Diagnostic Tool</h1>
-    <div class="container">
-      <div class="panel">
-        <h2>Commands</h2>
-        <label for="targetSelector">Select Target</label>
-        <select id="targetSelector"></select>
-        
-        <div class="command-group">
-          <label for="threshold">CONFIG_THRESHOLD</label>
-          <input type="number" id="threshold" value="150">
-          <button onclick="sendCommand('CONFIG_THRESHOLD', document.getElementById('threshold').value)">Send</button>
-        </div>
-
-        <div class="command-group">
-          <label>CONFIG_HIT / CONFIG_INTERIM_HIT</label>
-          <input type="text" id="hit_id" placeholder="hit_config_id (e.g., standard)">
-          <input type="number" id="hits_req" placeholder="hits_required" value="1">
-          <select id="health_bar">
-            <option value="NONE">Health Bar: NONE</option>
-            <option value="DECREMENTAL">Health Bar: DECREMENTAL</option>
-          </select>
-          <textarea id="hit_script" rows="2" placeholder="visual_script (e.g., 1000 ANIM THEATER_CHASE 255 165 0)"></textarea>
-          <button onclick="sendConfigHit()">Send CONFIG_HIT</button>
-          <button onclick="sendConfigInterimHit()">Send CONFIG_INTERIM_HIT</button>
-        </div>
-
-        <div class="command-group">
-          <label>ON</label>
-          <input type="number" id="on_timeout" placeholder="timeout_ms" value="5000">
-          <input type="text" id="on_value" placeholder="value (e.g., positive)">
-          <input type="text" id="on_hit_id" placeholder="hit_config_id">
-          <textarea id="on_script" rows="2" placeholder="visual_script (e.g., SOLID 0 255 0)"></textarea>
-          <button onclick="sendOn()">Send ON</button>
-        </div>
-
-        <div class="command-group">
-          <label>DISPLAY</label>
-          <input type="number" id="display_loops" placeholder="loop_count" value="1">
-          <textarea id="display_script" rows="2" placeholder="visual_script"></textarea>
-          <button onclick="sendDisplay()">Send DISPLAY</button>
-        </div>
-        
-        <div class="command-group">
-          <button onclick="sendCommand('OFF')">Send OFF</button>
-          <button onclick="sendCommand('STATUS_REQUEST')">Send STATUS_REQUEST</button>
-        </div>
-      </div>
-      <div class="panel">
-        <h2>Target Log</h2>
-        <div id="log"></div>
-      </div>
-      <div class="panel" id="test-panel">
-        <h2>Full Test Routine</h2>
-        <p>This will run a full diagnostic test against the selected target. Follow the on-screen prompts.</p>
-        <button id="startTestBtn" onclick="runTestRoutine()">Start Test Routine</button>
-        <div id="test-status"></div>
-      </div>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            text-align: center;
+        }
+        .welcome-container {
+            max-width: 600px;
+        }
+        a {
+            color: #569cd6;
+            text-decoration: none;
+            border-bottom: 1px dotted #569cd6;
+        }
+        a:hover {
+            color: #9cdcfe;
+            border-bottom-style: solid;
+        }
+    </style>
+</head>
+<body>
+    <div class="welcome-container">
+        <h1>Open Blaster Target Platform (OBTP)</h1>
+        <p>This server provides the back-end for the OBTP project.</p>
+        <p>
+            <a href="/diagnostics">[Target Diagnostics]</a> &nbsp;&nbsp;&nbsp;
+            <a href="https://github.com/buckeye132/open-blaster-target-platform" target="_blank">[GitHub Repository]</a>
+        </p>
     </div>
-
-    <script src="script.js"></script>
-    </body></html>
+</body>
+</html>
