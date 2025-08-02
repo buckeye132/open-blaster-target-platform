@@ -45,10 +45,23 @@ function broadcastTargetList() {
 
 // --- TCP Server (for the ESP32 target) ---
 const tcpServer = net.createServer((socket) => {
-  const socketId = `${socket.remoteAddress}:${socket.remotePort}`;
-  socket.id = socketId; // Add a unique identifier to the socket object
+  let socketId = socket.remoteAddress; // Get the raw address
+  // Clean up IPv6-mapped IPv4 addresses
+  if (socketId.startsWith('::ffff:')) {
+    socketId = socketId.slice(7);
+  }
+  socket.id = socketId; // Use the cleaned IP as the unique ID
+  socket.setKeepAlive(true, 3000);
+
+  // If a socket with the same IP already exists, remove it.
+  const oldSocketIndex = connectedTargets.findIndex(s => s.id === socketId);
+  if (oldSocketIndex !== -1) {
+    console.log(`LOG: Target Reconnected: ${socketId}. Replacing old socket.`);
+    connectedTargets.splice(oldSocketIndex, 1);
+  } else {
+    console.log(`LOG: Target Connected: ${socketId}`);
+  }
   
-  console.log(`LOG: Target Connected: ${socketId}`);
   connectedTargets.push(socket);
   broadcastTargetList();
 
@@ -69,23 +82,30 @@ const tcpServer = net.createServer((socket) => {
   });
 
   // Handle disconnection
-  socket.on('end', () => {
-    console.log(`LOG: Target Disconnected: ${socket.id}`);
-    connectedTargets = connectedTargets.filter(s => s !== socket);
+  socket.on('close', (hadError) => {
+    console.log(`LOG: Target Disconnected: ${socket.id} (Error: ${hadError})`);
+    // Remove this specific socket instance from the array
+    const index = connectedTargets.indexOf(socket);
+    if (index > -1) {
+        connectedTargets.splice(index, 1);
+    }
     broadcastTargetList();
   });
 
   socket.on('error', (err) => {
     console.error(`Socket Error from ${socket.id}:`, err.message);
-    // The 'end' event will be called automatically after an error.
+    // The 'close' event will be called automatically after an error, so we don't need to clean up here.
   });
 });
+
 
 // --- Web Server (for the UI) ---
 const webServer = http.createServer((req, res) => {
   let page = req.url === '/' ? 'index.html' : req.url;
   if (req.url === '/diagnostics') {
     page = 'diagnostics.html';
+  } else if (req.url === '/lobby') {
+    page = 'lobby.html';
   }
 
   let filePath = path.join(__dirname, 'assets', page);
