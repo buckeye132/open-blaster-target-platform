@@ -79,6 +79,14 @@ unsigned long stepStartTime = 0;
 int loopCount = 0;
 bool isLooping = false;
 
+// --- Animation State Variables ---
+static uint8_t animationCounter = 0;
+static uint8_t animationHue = 0;
+static int cometPosition = 0;
+static int wipePosition = 0;
+static int cylonPosition = 0;
+static bool cylonDirection = 0; // 0 for forward, 1 for backward
+
 // --- Non-Blocking Timers ---
 unsigned long lastConnectionAttempt = 0;
 unsigned long lastLedUpdateTime = 0;
@@ -213,17 +221,21 @@ std::vector<VisualStep> parseVisualScript(const std::vector<String>& tokens, int
 
         VisualStep step;
         auto parts = splitString(stepStr, ' ');
-        if (parts.size() < 4) continue;
+        if (parts.size() < 3) continue; // Min parts for ANIM: duration, type, name
 
         step.duration = parts[0].toInt();
         step.state.type = parts[1];
+
         if (step.state.type == "SOLID" && parts.size() >= 5) {
             step.state.color = CRGB(parts[2].toInt(), parts[3].toInt(), parts[4].toInt());
-        } else if (step.state.type == "ANIM" && parts.size() >= 6) {
+            script.push_back(step);
+        } else if (step.state.type == "ANIM") {
             step.state.animName = parts[2];
-            step.state.color = CRGB(parts[3].toInt(), parts[4].toInt(), parts[5].toInt());
+            if (parts.size() >= 6) {
+                step.state.color = CRGB(parts[3].toInt(), parts[4].toInt(), parts[5].toInt());
+            }
+            script.push_back(step);
         }
-        script.push_back(step);
     }
     return script;
 }
@@ -288,6 +300,15 @@ void startVisualScript(const std::vector<VisualStep>& script, int loops) {
     stepStartTime = millis();
     loopCount = loops;
     isLooping = (loops == 0);
+
+    // --- Reset all animation state variables ---
+    animationCounter = 0;
+    animationHue = 0;
+    cometPosition = 0;
+    wipePosition = 0;
+    cylonPosition = 0;
+    cylonDirection = 0;
+
     Serial.printf("LOG: Starting script with %d loops.\n", loops);
     renderFrame();
 }
@@ -304,48 +325,147 @@ void stopAllActions() {
     FastLED.show();
 }
 
+// --- Animation State Variables ---
+/*static uint8_t animationCounter = 0;
+static uint8_t animationHue = 0;
+static int cometPosition = 0;
+static int wipePosition = 0;
+static int cylonPosition = 0;
+static bool cylonDirection = 0; // 0 for forward, 1 for backward*/
+
 void renderFrame() {
-    //Serial.println("LOG: Entering renderFrame.");
     if (activeScript.empty()) {
-        Serial.println("LOG: renderFrame - activeScript is empty, returning.");
         return;
     }
 
     const VisualStep& currentStep = activeScript[currentStepIndex];
-    //Serial.println("LOG: renderFrame - Rendering step " + String(currentStepIndex) + " of type " + currentStep.state.type);
-    
     int ledsToShow = NUM_LEDS;
+
     if (currentState == READY && hitConfigs.count(activeHitConfigId) && hitConfigs[activeHitConfigId].healthBarMode == 1) {
         int hitsReq = hitConfigs[activeHitConfigId].hitsRequired;
-        ledsToShow = map(hitsReq - currentHitCount, 0, hitsReq, 0, NUM_LEDS);
-        //Serial.println("LOG: renderFrame - Health bar mode active, showing " + String(ledsToShow) + " LEDs.");
+        if (hitsReq > 0) {
+            ledsToShow = map(hitsReq - currentHitCount, 0, hitsReq, 0, NUM_LEDS);
+        }
     }
 
+    // --- Animation Logic ---
     if (currentStep.state.type == "SOLID") {
-        for (int i = 0; i < NUM_LEDS; i++) {
-            leds[i] = (i < ledsToShow) ? currentStep.state.color : CRGB::Black;
-        }
+        for (int i = 0; i < ledsToShow; i++) leds[i] = currentStep.state.color;
+        for (int i = ledsToShow; i < NUM_LEDS; i++) leds[i] = CRGB::Black;
+
     } else if (currentStep.state.type == "ANIM") {
-        if (currentStep.state.animName == "PULSE") {
+        const String& animName = currentStep.state.animName;
+        CRGB color = currentStep.state.color;
+        
+        if (animName == "PULSE") {
             uint8_t brightness = beatsin8(20, 64, 255);
-            CRGB color = currentStep.state.color;
-            color.nscale8(brightness);
-            for (int i = 0; i < ledsToShow; i++) leds[i] = color;
-            for (int i = ledsToShow; i < NUM_LEDS; i++) leds[i] = CRGB::Black;
-        } else if (currentStep.state.animName == "THEATER_CHASE") {
-            static uint8_t chaseOffset = 0;
-            chaseOffset++;
-            for (int i = 0; i < NUM_LEDS; i++) {
-                if ((i + chaseOffset) % 3 == 0 && i < ledsToShow) {
-                    leds[i] = currentStep.state.color;
-                } else {
-                    leds[i] = CRGB::Black;
+            CRGB pulseColor = color;
+            pulseColor.nscale8(brightness);
+            for (int i = 0; i < ledsToShow; i++) leds[i] = pulseColor;
+        } 
+        else if (animName == "THEATER_CHASE") {
+            animationCounter++;
+            for (int i = 0; i < ledsToShow; i++) {
+                leds[i] = ((i + animationCounter) % 3 == 0) ? color : CRGB::Black;
+            }
+        }
+        else if (animName == "RAINBOW_CYCLE") {
+            animationHue++;
+            // Manual implementation of a rainbow cycle
+            for (int i = 0; i < ledsToShow; i++) {
+                leds[i] = CHSV((uint8_t)(animationHue + (i * 10)), 255, 255);
+            }
+        }
+        else if (animName == "COMET") {
+            const int tailLength = 5;
+            fadeToBlackBy(leds, NUM_LEDS, 20); // Fade all LEDs to create the tail
+            leds[cometPosition] = color;
+            cometPosition = (cometPosition + 1) % NUM_LEDS;
+        }
+        else if (animName == "WIPE") {
+            if (wipePosition < ledsToShow) { // Check bounds BEFORE writing
+                leds[wipePosition] = color;
+            }
+            wipePosition++;
+
+            // After a 0.5s pause (30 frames)
+            if (wipePosition >= ledsToShow + (LED_UPDATE_FPS / 2)) {
+                wipePosition = 0; // Reset for next loop
+                fill_solid(leds, NUM_LEDS, CRGB::Black); // Clear LEDs
+            }
+        }
+        else if (animName == "CYLON") {
+            const int eyeSize = 4;
+            fadeToBlackBy(leds, NUM_LEDS, 10);
+            
+            // Move the eye position back and forth across the entire strip
+            if (cylonDirection) { // Moving backwards
+                cylonPosition--;
+                if (cylonPosition <= 0) {
+                    cylonPosition = 0;
+                    cylonDirection = false;
                 }
+            } else { // Moving forwards
+                cylonPosition++;
+                if (cylonPosition >= NUM_LEDS - eyeSize) {
+                    cylonPosition = NUM_LEDS - eyeSize;
+                    cylonDirection = true;
+                }
+            }
+            
+            // Draw the eye at the new position
+            for(int i = 0; i < eyeSize; i++) {
+                leds[cylonPosition + i] = color;
+            }
+        }
+        else if (animName == "SPARKLE") {
+            if (random8() < 120) { // Adjust probability for more/less sparkle
+                leds[random16(ledsToShow)] = color;
+            }
+            fadeToBlackBy(leds, NUM_LEDS, 40);
+        }
+        else if (animName == "FIRE") {
+            const int cooling = 55;
+            const int sparking = 120;
+            static byte heat[NUM_LEDS];
+            
+            for( int i = 0; i < NUM_LEDS; i++) {
+              heat[i] = qsub8( heat[i],  random8(0, ((cooling * 10) / NUM_LEDS) + 2));
+            }
+          
+            for( int k= NUM_LEDS - 1; k >= 2; k--) {
+              heat[k] = (heat[k - 1] + heat[k - 2] + heat[k - 2] ) / 3;
+            }
+            
+            if( random8() < sparking ) {
+              int y = random16(NUM_LEDS);
+              heat[y] = qadd8( heat[y], random8(160,255) );
+            }
+
+            for( int j = 0; j < ledsToShow; j++) {
+              CRGB fireColor = HeatColor( heat[j]);
+              leds[j] = fireColor;
+            }
+        }
+        else if (animName == "CONVERGE") {
+            animationCounter++;
+            int midPoint = NUM_LEDS / 2;
+            int pos1 = animationCounter % midPoint;
+            int pos2 = NUM_LEDS - 1 - pos1;
+            
+            fill_solid(leds, NUM_LEDS, CRGB::Black);
+            leds[pos1] = color;
+            leds[pos2] = color;
+        }
+
+        // Ensure LEDs outside the health bar are off
+        if (ledsToShow < NUM_LEDS) {
+            for (int i = ledsToShow; i < NUM_LEDS; i++) {
+                leds[i] = CRGB::Black;
             }
         }
     }
     FastLED.show();
-    //Serial.println("LOG: renderFrame - FastLED.show() called.");
 }
 
 void updateVisuals() {

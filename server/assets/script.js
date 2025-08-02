@@ -44,6 +44,11 @@ const sendConfigInterimHit = () => sendCommandToServer(targetSelector.value, 'CO
 const sendOn = () => sendCommandToServer(targetSelector.value, 'ON', document.getElementById('on_timeout').value, document.getElementById('on_value').value, document.getElementById('on_hit_id').value, document.getElementById('on_script').value);
 const sendDisplay = () => sendCommandToServer(targetSelector.value, 'DISPLAY', document.getElementById('display_loops').value, document.getElementById('display_script').value);
 
+function testAnimation(animName, color) {
+    const visualScript = `5000 ANIM ${animName} ${color.replace(/,/g, '')}`;
+    sendCommandToServer(targetSelector.value, 'DISPLAY', '1', visualScript);
+}
+
 ws.onmessage = (event) => {
   const data = JSON.parse(event.data);
   if (data.type === 'TARGET_LIST') {
