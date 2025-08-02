@@ -1,0 +1,14 @@
+{
+  "name": "nerf-target-diagnostic-server",
+  "version": "1.0.0",
+  "description": "A Node.js server to test and debug ESP32 Nerf targets.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ws": "^8.17.1"
+  }
+}

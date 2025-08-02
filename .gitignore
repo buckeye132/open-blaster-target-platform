@@ -137,3 +137,7 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Local firmware credentials file. This file is not meant to be checked in.
+# The credentials.h.example file, however, IS meant to be checked in.
+/firmware/esp32-target/credentials.h
