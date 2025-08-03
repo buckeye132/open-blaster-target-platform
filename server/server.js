@@ -297,6 +297,16 @@ wss.on('connection', (ws) => {
       }
       return;
     }
+
+    if (data.command === 'calibrate-piezo') {
+      if (target) {
+        console.log(`LOG: Sending auto-calibration command to ${data.targetId}`);
+        target.write('CONFIG_THRESHOLD\n');
+      } else {
+        console.log(`WARN: Target ${data.targetId} not found for calibration.`);
+      }
+      return;
+    }
     
     if (target) {
       const commandToSend = data.command;

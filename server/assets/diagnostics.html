@@ -28,6 +28,7 @@
           <label for="threshold">CONFIG_THRESHOLD</label>
           <input type="number" id="threshold" value="150">
           <button onclick="sendCommand('CONFIG_THRESHOLD', document.getElementById('threshold').value)">Send</button>
+          <button onclick="calibratePiezo()">Auto-Calibrate</button>
         </div>
 
         <div class="command-group">

@@ -66,7 +66,7 @@ std::map<String, std::vector<VisualStep>> interimHitConfigs;
 // --- Target & Game Variables ---
 String responseBuffer = "";
 bool timingDebugMode = false;
-int piezoThreshold = 150;
+int piezoThreshold = 500;
 int currentHitCount = 0;
 String activeValue = "";
 String activeHitConfigId = "";
@@ -101,6 +101,7 @@ void startVisualScript(const std::vector<VisualStep>& script, int loops);
 void updateVisuals();
 void stopAllActions();
 void renderFrame();
+void autoCalibratePiezoThreshold();
 
 void setup() {
   Serial.begin(115200);
@@ -270,7 +271,15 @@ void parseAndExecuteCommand(String command) {
   String cmdType = tokens[0];
 
   if (cmdType == "CONFIG_THRESHOLD") {
-    piezoThreshold = tokens[1].toInt();
+    if (tokens.size() > 1) {
+      piezoThreshold = tokens[1].toInt();
+      char buffer[128];
+      snprintf(buffer, sizeof(buffer), "LOG: Piezo threshold set to %d\n", piezoThreshold);
+      Serial.print(buffer);
+      responseBuffer += buffer;
+    } else {
+      autoCalibratePiezoThreshold();
+    }
   } 
   else if (cmdType == "CONFIG_HIT") {
     String id = tokens[1];
@@ -486,6 +495,56 @@ void renderFrame() {
         }
     }
     FastLED.show();
+}
+
+void autoCalibratePiezoThreshold() {
+  Serial.println("LOG: Starting piezo auto-calibration.");
+  responseBuffer += "LOG: Starting piezo auto-calibration.\n";
+
+  uint16_t maxPiezoReading = 0;
+  uint8_t animCounter = 0;
+
+  // Run animation for 600ms total.
+  // Ignore readings for the first 100ms (warm-up).
+  unsigned long startTime = millis();
+  while (millis() - startTime < 600) {
+    animCounter++;
+    for (int i = 0; i < NUM_LEDS; i++) {
+        leds[i] = ((i + animCounter) % 3 == 0) ? CRGB::White : CRGB::Black;
+    }
+    FastLED.show();
+    
+    uint16_t currentReading = analogRead(PIEZO_PIN);
+    if (currentReading > maxPiezoReading) {
+      maxPiezoReading = currentReading;
+    }
+    
+    delay(10); 
+  }
+
+  // Turn LEDs off
+  FastLED.clear();
+  FastLED.show();
+
+  // continue to read for another 500ms until LED draw settles
+  startTime = millis();
+  while (millis() - startTime < 500) {
+    uint16_t currentReading = analogRead(PIEZO_PIN);
+    if (currentReading > maxPiezoReading) {
+      maxPiezoReading = currentReading;
+    }
+    
+    delay(10); 
+  }
+
+  // Set threshold to 2x above the max noise reading
+  // use 850 as the min threshold. 
+  piezoThreshold = max(850, (int)(maxPiezoReading * 2));
+
+  char buffer[128];
+  snprintf(buffer, sizeof(buffer), "LOG: Auto-calibration complete. Max noise: %d, New threshold: %d\n", maxPiezoReading, piezoThreshold);
+  Serial.print(buffer);
+  responseBuffer += buffer;
 }
 
 void updateVisuals() {

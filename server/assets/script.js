@@ -62,6 +62,17 @@ function pingTarget() {
   logEl.scrollTop = logEl.scrollHeight;
 }
 
+function calibratePiezo() {
+  const targetId = targetSelector.value;
+  if (!targetId) {
+    logEl.innerHTML += '<strong>ERROR: No target selected.</strong><br>';
+    return;
+  }
+  ws.send(JSON.stringify({ command: 'calibrate-piezo', targetId }));
+  logEl.innerHTML += `<strong>&gt; [${targetId}] CALIBRATE_PIEZO</strong><br>`;
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
 function testAnimation(animName, color) {
     const visualScript = `5000 ANIM ${animName} ${color.replace(/,/g, '')}`;
     sendCommandToServer(targetSelector.value, 'DISPLAY', '1', visualScript);

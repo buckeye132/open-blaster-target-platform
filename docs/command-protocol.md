@@ -28,9 +28,13 @@ These commands are sent from the server to the targets. All commands are termina
 ### 1. Configuration Commands
 These are sent once at the beginning of a game to set up the targets' local behaviors.
 
-* **`CONFIG_THRESHOLD <threshold_value>`**
-    * **Purpose:** Sets the sensitivity of the piezo hit sensor.
-    * **Example:** `CONFIG_THRESHOLD 200`
+* **`CONFIG_THRESHOLD [<threshold_value>]`**
+    * **Purpose:** Sets the sensitivity of the piezo hit sensor. Can be used in two ways:
+        * **Manual:** Provide a `<threshold_value>` to set the threshold directly.
+        * **Auto-Calibration:** Send the command without a value. The target will flash its LEDs to induce noise, measure the peak sensor reading, and automatically set a new threshold 10% above that noise floor.
+    * **Examples:**
+        * `CONFIG_THRESHOLD 200` (Manual)
+        * `CONFIG_THRESHOLD` (Auto-Calibration)
 
 * **`CONFIG_HIT <hit_config_id> <hits_required> <health_bar_mode> <visual_script>`**
     * **Purpose:** Defines a reusable, named reaction that a target will execute locally upon a successful hit.

@@ -40,6 +40,7 @@ function renderTargetCard(targetId) {
         <div class="status" id="status-${targetId.replace(/[:.]/g, '-')}">Idle</div>
         <button onclick="testLeds('${targetId}')">Test LEDs</button>
         <button onclick="testHit('${targetId}')">Test Hit</button>
+        <button onclick="calibrateTarget('${targetId}')">Calibrate</button>
     `;
     card.classList.toggle('offline', !target.online);
 }
@@ -51,6 +52,11 @@ function updateTargetStatus(targetId, message, type = 'info') {
         statusEl.className = 'status ' + type;
     }
 }
+
+window.calibrateTarget = (targetId) => {
+    sendCommandToServer(targetId, 'calibrate-piezo');
+    updateTargetStatus(targetId, 'Calibrating...');
+};
 
 window.testLeds = (targetId) => {
     sendCommandToServer(targetId, 'DISPLAY', '1', '250 SOLID 255 255 255 | 250 SOLID 0 0 0 | 250 SOLID 255 255 255 | 250 SOLID 0 0 0');
@@ -93,6 +99,13 @@ ws.onmessage = (event) => {
             updateTargetStatus(from, 'HIT Detected!', 'hit');
         } else if (message.startsWith('EXPIRED')) {
             updateTargetStatus(from, 'Hit Test EXPIRED', 'expired');
+        } else if (message.includes('Auto-calibration complete')) {
+            const thresholdMatch = message.match(/New threshold: (\d+)/);
+            if (thresholdMatch && thresholdMatch[1]) {
+                updateTargetStatus(from, `Calibrated! Threshold: ${thresholdMatch[1]}`, 'hit');
+            } else {
+                updateTargetStatus(from, 'Calibration Finished', 'hit');
+            }
         }
     }
 };
