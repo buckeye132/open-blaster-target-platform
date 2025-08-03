@@ -108,6 +108,8 @@ const webServer = http.createServer((req, res) => {
     page = 'lobby.html';
   } else if (req.url === '/quick_draw') {
     page = 'quick_draw.html';
+  } else if (req.url === '/whack_a_mole') {
+    page = 'whack_a_mole.html';
   }
 
   let filePath = path.join(__dirname, 'assets', page);

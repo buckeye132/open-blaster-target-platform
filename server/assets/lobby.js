@@ -101,5 +101,7 @@ document.getElementById('start-game-link').addEventListener('click', () => {
     const selectedGame = document.getElementById('game-mode-select').value;
     if (selectedGame === 'quick_draw') {
         window.location.href = '/quick_draw';
+    } else if (selectedGame === 'whack_a_mole') {
+        window.location.href = '/whack_a_mole';
     }
 });
