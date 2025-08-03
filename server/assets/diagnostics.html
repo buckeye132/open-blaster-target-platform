@@ -62,6 +62,7 @@
         <div class="command-group">
           <button onclick="sendCommand('OFF')">Send OFF</button>
           <button onclick="sendCommand('STATUS_REQUEST')">Send STATUS_REQUEST</button>
+          <button onclick="pingTarget()">Ping Target</button>
         </div>
       </div>
       <div class="panel">
@@ -86,6 +87,18 @@
         <p>This will run a full diagnostic test against the selected target. Follow the on-screen prompts.</p>
         <button id="startTestBtn" onclick="runTestRoutine()">Start Test Routine</button>
         <div id="test-status"></div>
+      </div>
+      <div class="panel" id="ping-test-panel">
+        <h2>Latency Test</h2>
+        <p>Send a burst of pings to measure network latency.</p>
+        <div class="command-group">
+            <label for="ping-count">Number of Pings:</label>
+            <input type="number" id="ping-count" value="20">
+            <button id="startPingTestBtn" onclick="runPingTest(false)">Start Latency Test</button>
+            <button id="startPingTestDebugBtn" onclick="runPingTest(true)">Latency Test w/ Timing Debug</button>
+        </div>
+        <div id="ping-test-status"></div>
+        <div id="ping-test-results"></div>
       </div>
     </div>
 

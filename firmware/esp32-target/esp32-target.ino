@@ -64,6 +64,8 @@ std::map<String, HitConfig> hitConfigs;
 std::map<String, std::vector<VisualStep>> interimHitConfigs;
 
 // --- Target & Game Variables ---
+String responseBuffer = "";
+bool timingDebugMode = false;
 int piezoThreshold = 150;
 int currentHitCount = 0;
 String activeValue = "";
@@ -112,9 +114,11 @@ void setup() {
   FastLED.show();
   Serial.println("LOG: FastLED initialized.");
 
+  WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   Serial.print("LOG: Connecting to WiFi...");
   while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
+  WiFi.setSleep(false);
   Serial.println("\nLOG: WiFi connected!");
   Serial.print("LOG: My IP: "); Serial.println(WiFi.localIP());
   Serial.println("LOG: Target is IDLE.");
@@ -122,9 +126,8 @@ void setup() {
 }
 
 void loop() {
-  // --- Heartbeat LED (disabled due to pin conflict with DATA_PIN on GPIO2) ---
-  // uint8_t brightness = beatsin8(10, 0, 80);
-  // analogWrite(ONBOARD_LED, brightness);
+  unsigned long loopStart = micros();
+  unsigned long networkReadTime = 0, networkWriteTime = 0, stateMachineTime = 0, visualUpdateTime = 0;
 
   // --- TCP Connection Management ---
   if (!tcpClient.connected()) {
@@ -134,23 +137,32 @@ void loop() {
     }
   } else {
     // --- Non-Blocking Command Receiver ---
+    unsigned long networkReadStart = micros();
     if (tcpClient.available()) {
-        while (tcpClient.available()) {
-          char c = tcpClient.read();
-          if (c == '\n') {
-            commandBuffer.trim();
-            if (commandBuffer.length() > 0) {
-              parseAndExecuteCommand(commandBuffer);
-            }
-            commandBuffer = "";
-          } else if (c != '\r') {
-            commandBuffer += c;
-          }
+      char c = tcpClient.read();
+      if (c == '\n') {
+        commandBuffer.trim();
+        if (commandBuffer.length() > 0) {
+          parseAndExecuteCommand(commandBuffer);
         }
+        commandBuffer = "";
+      } else if (c != '\r') {
+        commandBuffer += c;
+      }
     }
+    networkReadTime = micros() - networkReadStart;
+
+    // --- Non-Blocking Response Sender ---
+    unsigned long networkWriteStart = micros();
+    if (responseBuffer.length() > 0) {
+        size_t sent = tcpClient.write(responseBuffer.c_str(), responseBuffer.length());
+        responseBuffer.remove(0, sent);
+    }
+    networkWriteTime = micros() - networkWriteStart;
   }
 
   // --- State Machine ---
+  unsigned long stateMachineStart = micros();
   uint16_t piezo_read = analogRead(PIEZO_PIN);
   if (piezo_read > 0) {
     Serial.printf("LOG: PIEZO: %u\n", piezo_read);
@@ -164,8 +176,9 @@ void loop() {
       HitConfig& config = hitConfigs[activeHitConfigId];
       
       if (currentHitCount >= config.hitsRequired) {
-        Serial.printf("LOG: Final hit detected! Sending HIT %lu %s\n", reaction, activeValue.c_str());
-        tcpClient.printf("HIT %lu %s\n", reaction, activeValue.c_str());
+        char buffer[128];
+        snprintf(buffer, sizeof(buffer), "HIT %lu %s\n", reaction, activeValue.c_str());
+        responseBuffer += buffer;
         currentState = HIT_ANIMATION;
         startVisualScript(config.script, 1);
       } else {
@@ -177,16 +190,24 @@ void loop() {
       }
     }
     if (timeoutExpireTime > 0 && millis() > timeoutExpireTime) {
-        Serial.printf("LOG: Target expired. Sending EXPIRED %s\n", activeValue.c_str());
-        tcpClient.printf("EXPIRED %s\n", activeValue.c_str());
+        char buffer[128];
+        snprintf(buffer, sizeof(buffer), "EXPIRED %s\n", activeValue.c_str());
+        responseBuffer += buffer;
         stopAllActions();
     }
   }
+  stateMachineTime = micros() - stateMachineStart;
 
   // --- Visuals Update ---
+  unsigned long visualUpdateStart = micros();
   updateVisuals();
+  visualUpdateTime = micros() - visualUpdateStart;
 
-  delay(1);
+  if (timingDebugMode) {
+    unsigned long loopTime = micros() - loopStart;
+    Serial.printf("DEBUG: Loop: %lu us | Read: %lu us | Write: %lu us | State: %lu us | Visuals: %lu us\n", 
+                  loopTime, networkReadTime, networkWriteTime, stateMachineTime, visualUpdateTime);
+  }
 }
 
 // --- Core Logic ---
@@ -241,7 +262,6 @@ std::vector<VisualStep> parseVisualScript(const std::vector<String>& tokens, int
 }
 
 void parseAndExecuteCommand(String command) {
-  Serial.println("LOG: Entering parseAndExecuteCommand.");
   command.trim();
   if (command == "") return;
   currentCommand = command;
@@ -285,14 +305,23 @@ void parseAndExecuteCommand(String command) {
     if(currentState == READY) stateStr = "READY";
     if(currentState == DISPLAYING) stateStr = "DISPLAYING";
     if(currentState == HIT_ANIMATION) stateStr = "HIT_ANIMATION";
-    tcpClient.printf("STATUS_REPORT %s %s\n", stateStr.c_str(), currentCommand.c_str());
+    char buffer[256];
+    snprintf(buffer, sizeof(buffer), "STATUS_REPORT %s %s\n", stateStr.c_str(), currentCommand.c_str());
+    responseBuffer += buffer;
+  }
+  else if (cmdType == "PING") {
+    responseBuffer += "PONG\n";
+  }
+  else if (cmdType == "TIMING_DEBUG") {
+    timingDebugMode = !timingDebugMode;
+    char buffer[64];
+    snprintf(buffer, sizeof(buffer), "LOG Timing debug mode is now %s\n", timingDebugMode ? "ON" : "OFF");
+    responseBuffer += buffer;
   }
 }
 
 void startVisualScript(const std::vector<VisualStep>& script, int loops) {
-    Serial.println("LOG: Entering startVisualScript.");
     if (script.empty()) {
-        Serial.println("LOG: Script is empty, stopping actions.");
         stopAllActions();
         return;
     }
@@ -310,12 +339,10 @@ void startVisualScript(const std::vector<VisualStep>& script, int loops) {
     cylonPosition = 0;
     cylonDirection = 0;
 
-    Serial.printf("LOG: Starting script with %d loops.\n", loops);
     renderFrame();
 }
 
 void stopAllActions() {
-    Serial.println("LOG: Entering stopAllActions. Setting state to IDLE.");
     currentState = IDLE;
     currentCommand = "OFF";
     activeScript.clear();
@@ -475,21 +502,16 @@ void updateVisuals() {
     lastLedUpdateTime = millis();
 
     if (millis() - stepStartTime >= activeScript[currentStepIndex].duration) {
-        Serial.println("LOG: updateVisuals - Step " + String(currentStepIndex) + " duration has ended.");
         currentStepIndex++;
         stepStartTime = millis();
         if (currentStepIndex >= activeScript.size()) {
-            Serial.println("LOG: updateVisuals - End of script sequence reached.");
             if (isLooping) {
-                Serial.println("LOG: updateVisuals - Looping script.");
                 currentStepIndex = 0;
             } else {
                 loopCount--;
                 if (loopCount > 0) {
-                    Serial.println("LOG: updateVisuals - Repeating script. Loops remaining: " + String(loopCount));
                     currentStepIndex = 0;
                 } else {
-                    Serial.println("LOG: updateVisuals - Script finished, clearing activeScript.");
                     activeScript.clear();
                     return;
                 }
@@ -507,6 +529,7 @@ void connectToPrimary() {
   Serial.print("LOG: Connecting to primary server at "); Serial.println(primaryServerIp);
   if (tcpClient.connect(primaryServerIp, 8888)) {
     Serial.println("LOG: Connected!");
+    tcpClient.setNoDelay(true); // Disable Nagle's algorithm for low latency
   } else {
     Serial.println("LOG: Connection failed.");
   }

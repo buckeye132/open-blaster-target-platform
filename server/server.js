@@ -76,7 +76,28 @@ const tcpServer = net.createServer((socket) => {
         inputBuffer = inputBuffer.substring(newlineIndex + 1);
         if (message) {
             console.log(`LOG: Received from ${socket.id}: ${message}`);
-            broadcastToWeb('LOG_MESSAGE', { from: socket.id, message: message });
+            if (message === 'PONG') {
+              // Handle single pings
+              if (socket.pingId) {
+                console.log(`LOG: Pong received from ${socket.id}`);
+                broadcastToWeb('PING_RESULT', { targetId: socket.id, status: 'ok' });
+                delete socket.pingId;
+              }
+              // Handle ping test pongs
+              const test = pingTests[socket.id];
+              if (test && socket.pingStartTime) {
+                clearTimeout(test.timeout); // Clear the timeout for this specific ping
+                const latency = Date.now() - socket.pingStartTime;
+                test.latencies.push(latency);
+                test.remaining--;
+                broadcastToWeb('PING_TEST_UPDATE', { targetId: socket.id, status: 'pong', latency: latency, remaining: test.remaining });
+                delete socket.pingStartTime;
+                // Send the next ping after a short delay
+                setTimeout(() => sendSinglePingForTest(socket.id), 100);
+              }
+            } else {
+              broadcastToWeb('LOG_MESSAGE', { from: socket.id, message: message });
+            }
         }
     }
   });
@@ -148,6 +169,93 @@ const webServer = http.createServer((req, res) => {
   });
 });
 
+// --- Ping Test Functions ---
+let pingTests = {}; // Store state of ongoing ping tests
+
+function runPingTest(target, count, withDebug) {
+  const targetId = target.id;
+  if (pingTests[targetId]) {
+    console.log(`LOG: Ping test already in progress for ${targetId}.`);
+    return;
+  }
+
+  pingTests[targetId] = {
+    latencies: [],
+    timeouts: 0,
+    remaining: count,
+    target: target,
+    withDebug: withDebug,
+  };
+
+  broadcastToWeb('PING_TEST_UPDATE', { targetId, status: 'starting', total: count });
+  console.log(`LOG: Starting ping test for ${targetId} with ${count} pings (Debug: ${withDebug}).`);
+  
+  if (withDebug) {
+    target.write('TIMING_DEBUG\n');
+    setTimeout(() => sendSinglePingForTest(targetId), 200);
+  } else {
+    sendSinglePingForTest(targetId);
+  }
+}
+
+function sendSinglePingForTest(targetId) {
+  const test = pingTests[targetId];
+  if (!test || test.remaining <= 0) {
+    finishPingTest(targetId);
+    return;
+  }
+
+  const target = test.target;
+  // Ensure target is still connected
+  if (!connectedTargets.includes(target)) {
+      console.log(`LOG: Target ${targetId} disconnected during ping test.`);
+      broadcastToWeb('PING_TEST_UPDATE', { targetId, status: 'error', message: 'Target disconnected' });
+      delete pingTests[targetId];
+      return;
+  }
+
+  target.pingStartTime = Date.now();
+  target.write('PING\n');
+
+  test.timeout = setTimeout(() => {
+    console.log(`LOG: Ping to ${targetId} timed out during test.`);
+    test.timeouts++;
+    test.remaining--;
+    broadcastToWeb('PING_TEST_UPDATE', { targetId, status: 'timeout', remaining: test.remaining });
+    delete target.pingStartTime;
+    sendSinglePingForTest(targetId); // Send next ping
+  }, 2000);
+}
+
+function finishPingTest(targetId) {
+  const test = pingTests[targetId];
+  if (!test) return;
+
+  const { latencies, timeouts } = test;
+  const totalPings = latencies.length + timeouts;
+
+  let results = {
+    targetId,
+    total: totalPings,
+    successful: latencies.length,
+    timeouts,
+    min: latencies.length > 0 ? Math.min(...latencies) : 0,
+    max: latencies.length > 0 ? Math.max(...latencies) : 0,
+    avg: latencies.length > 0 ? (latencies.reduce((a, b) => a + b, 0) / latencies.length).toFixed(2) : 0,
+  };
+
+  console.log(`LOG: Ping test for ${targetId} finished.`);
+  broadcastToWeb('PING_TEST_RESULT', results);
+  
+  // Disable timing debug on the target if it was enabled for the test
+  if (test.withDebug && test.target && connectedTargets.includes(test.target)) {
+      test.target.write('TIMING_DEBUG\n');
+  }
+
+  delete pingTests[targetId];
+}
+
+
 // --- Start the Servers ---
 const wss = new WebSocket.Server({ server: webServer });
 wss.on('connection', (ws) => {
@@ -159,6 +267,36 @@ wss.on('connection', (ws) => {
   ws.on('message', (message) => {
     const data = JSON.parse(message.toString());
     const target = connectedTargets.find(s => s.id === data.targetId);
+
+    if (data.command === 'ping') {
+      if (target) {
+        const pingId = `${data.targetId}-${Date.now()}`;
+        target.pingId = pingId; // Attach a unique ID for this ping
+
+        console.log(`LOG: Pinging target ${data.targetId}...`);
+        target.write('PING\n');
+
+        // Set a timeout for the pong response
+        setTimeout(() => {
+          if (target.pingId === pingId) { // If the ping ID is still the same, it timed out
+            console.log(`LOG: Ping to ${data.targetId} timed out.`);
+            broadcastToWeb('PING_RESULT', { targetId: data.targetId, status: 'timeout' });
+          }
+        }, 2000); // 2-second timeout
+      } else {
+        console.log(`WARN: Target ${data.targetId} not found for ping.`);
+      }
+      return;
+    }
+
+    if (data.command === 'run-ping-test') {
+      if (target) {
+        runPingTest(target, data.count || 10, data.withDebug || false);
+      } else {
+        console.log(`WARN: Target ${data.targetId} not found for ping test.`);
+      }
+      return;
+    }
     
     if (target) {
       const commandToSend = data.command;

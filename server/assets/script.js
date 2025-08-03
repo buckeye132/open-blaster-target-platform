@@ -20,6 +20,13 @@ const targetSelector = document.getElementById('targetSelector');
 const testStatusEl = document.getElementById('test-status');
 const startTestBtn = document.getElementById('startTestBtn');
 
+// --- Ping Test State ---
+const pingCountInput = document.getElementById('ping-count');
+const startPingTestBtn = document.getElementById('startPingTestBtn');
+const pingStatusEl = document.getElementById('ping-test-status');
+const pingResultsEl = document.getElementById('ping-test-results');
+let pingTestInProgress = false;
+
 // --- Test Routine State ---
 let testInProgress = false;
 let currentTestStep = 0;
@@ -44,9 +51,38 @@ const sendConfigInterimHit = () => sendCommandToServer(targetSelector.value, 'CO
 const sendOn = () => sendCommandToServer(targetSelector.value, 'ON', document.getElementById('on_timeout').value, document.getElementById('on_value').value, document.getElementById('on_hit_id').value, document.getElementById('on_script').value);
 const sendDisplay = () => sendCommandToServer(targetSelector.value, 'DISPLAY', document.getElementById('display_loops').value, document.getElementById('display_script').value);
 
+function pingTarget() {
+  const targetId = targetSelector.value;
+  if (!targetId) {
+    logEl.innerHTML += '<strong>ERROR: No target selected.</strong><br>';
+    return;
+  }
+  ws.send(JSON.stringify({ command: 'ping', targetId }));
+  logEl.innerHTML += `<strong>&gt; [${targetId}] PING</strong><br>`;
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
 function testAnimation(animName, color) {
     const visualScript = `5000 ANIM ${animName} ${color.replace(/,/g, '')}`;
     sendCommandToServer(targetSelector.value, 'DISPLAY', '1', visualScript);
+}
+
+function runPingTest(withDebug = false) {
+  const targetId = targetSelector.value;
+  if (!targetId || targetSelector.options[targetSelector.selectedIndex].text === 'No Targets Connected') {
+    pingStatusEl.innerHTML = '<strong style="color: #ff6b6b;">Please select a target first.</strong>';
+    return;
+  }
+  if (pingTestInProgress) return;
+
+  pingTestInProgress = true;
+  startPingTestBtn.disabled = true;
+  document.getElementById('startPingTestDebugBtn').disabled = true;
+  pingStatusEl.innerHTML = 'Starting test...';
+  pingResultsEl.innerHTML = '';
+
+  const count = parseInt(pingCountInput.value, 10) || 20;
+  ws.send(JSON.stringify({ command: 'run-ping-test', targetId, count, withDebug }));
 }
 
 ws.onmessage = (event) => {
@@ -77,6 +113,44 @@ ws.onmessage = (event) => {
     if (testInProgress && messageResolver) {
       messageResolver(data.payload);
     }
+  } else if (data.type === 'PING_RESULT') {
+    const { targetId, status } = data.payload;
+    let logLine;
+    if (status === 'ok') {
+      logLine = `&lt; [${targetId}] PONG<br>`;
+    } else {
+      logLine = `<strong style="color: #ff6b6b;">&lt; [${targetId}] PING TIMEOUT</strong><br>`;
+    }
+    logEl.innerHTML += logLine;
+    logEl.scrollTop = logEl.scrollHeight;
+  } else if (data.type === 'PING_TEST_UPDATE') {
+    const { targetId, status, remaining, total, latency } = data.payload;
+    if (status === 'starting') {
+        pingStatusEl.innerHTML = `Test running... 0/${total} pings sent.`;
+    } else {
+        const sentCount = total - remaining;
+        pingStatusEl.innerHTML = `Test running... ${sentCount}/${total} pings sent.`;
+        if (status === 'pong') {
+            pingResultsEl.innerHTML += `&lt; [${targetId}] PONG (${latency}ms)<br>`;
+        } else if (status === 'timeout') {
+            pingResultsEl.innerHTML += `<strong style="color: #ff6b6b;">&lt; [${targetId}] TIMEOUT</strong><br>`;
+        }
+        pingResultsEl.scrollTop = pingResultsEl.scrollHeight;
+    }
+  } else if (data.type === 'PING_TEST_RESULT') {
+      const { targetId, total, successful, timeouts, min, max, avg } = data.payload;
+      pingStatusEl.innerHTML = `<strong>Test for ${targetId} complete.</strong>`;
+      pingResultsEl.innerHTML += `
+        <hr>
+        <strong>Results:</strong><br>
+        - Sent: ${total}<br>
+        - Success: ${successful} (${((successful/total)*100).toFixed(1)}%)<br>
+        - Timeouts: ${timeouts}<br>
+        - Latency (ms): Min=${min}, Max=${max}, Avg=${avg}
+      `;
+      pingTestInProgress = false;
+      startPingTestBtn.disabled = false;
+      document.getElementById('startPingTestDebugBtn').disabled = false;
   }
 };
 

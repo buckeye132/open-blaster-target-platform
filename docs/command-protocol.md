@@ -69,6 +69,12 @@ These commands are for visual effects where the target should not be scorable.
 * **`STATUS_REQUEST`**
     * **Purpose:** Asks the target to immediately report its current internal state.
 
+* **`PING`**
+    * **Purpose:** A simple command to check if a target is responsive. The target should immediately reply with a `PONG` message.
+
+* **`TIMING_DEBUG`**
+    * **Purpose:** Toggles the firmware's internal diagnostic logging on or off. When enabled, the target will print detailed performance metrics to its serial console.
+
 ---
 
 ## Target-to-Server Messages
@@ -83,6 +89,9 @@ These messages are sent from the targets back to the server.
 
 * **`EXPIRED <value>`**
     * **Purpose:** Sent if a target's `timeout_ms` from an `ON` command expires before it is successfully hit.
+
+* **`PONG`**
+    * **Purpose:** The direct response to a `PING` command. Used to confirm connectivity and measure round-trip latency.
 
 * **`STATUS_REPORT <state> [<details>]`**
     * **Purpose:** The target's response to a `STATUS_REQUEST` command.
