@@ -64,6 +64,14 @@
 <body>
     <h1>Game Lobby</h1>
     <p>Connected targets will appear below. Use the buttons to test them before starting a game.</p>
+
+    <div class="command-group">
+        <select id="game-mode-select" style="width: 200px; margin-right: 10px;">
+            <option value="quick_draw">Quick Draw</option>
+        </select>
+        <button id="start-game-link">Start Game</button>
+    </div>
+
     <div id="target-grid"></div>
 
     <script src="lobby.js"></script>

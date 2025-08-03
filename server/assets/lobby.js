@@ -96,3 +96,10 @@ ws.onmessage = (event) => {
         }
     }
 };
+
+document.getElementById('start-game-link').addEventListener('click', () => {
+    const selectedGame = document.getElementById('game-mode-select').value;
+    if (selectedGame === 'quick_draw') {
+        window.location.href = '/quick_draw';
+    }
+});

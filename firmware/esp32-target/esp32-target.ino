@@ -268,6 +268,7 @@ void parseAndExecuteCommand(String command) {
     activeValue = tokens[2];
     activeHitConfigId = tokens[3];
     currentHitCount = 0;
+    targetReadyTime = millis();
     currentState = READY;
     startVisualScript(parseVisualScript(tokens, 4), 0);
   }
@@ -324,14 +325,6 @@ void stopAllActions() {
     FastLED.clear();
     FastLED.show();
 }
-
-// --- Animation State Variables ---
-/*static uint8_t animationCounter = 0;
-static uint8_t animationHue = 0;
-static int cometPosition = 0;
-static int wipePosition = 0;
-static int cylonPosition = 0;
-static bool cylonDirection = 0; // 0 for forward, 1 for backward*/
 
 void renderFrame() {
     if (activeScript.empty()) {
