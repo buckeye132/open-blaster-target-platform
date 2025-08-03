@@ -95,6 +95,18 @@ const tcpServer = net.createServer((socket) => {
                 // Send the next ping after a short delay
                 setTimeout(() => sendSinglePingForTest(socket.id), 100);
               }
+            } else if (message.startsWith('HIT')) {
+              if (activeGame) {
+                const parts = message.split(' '); // HIT <reaction_ms> <value>
+                const value = parts.length > 2 ? parts[2] : '';
+                activeGame.handleHit(socket, value);
+              }
+            } else if (message.startsWith('EXPIRED')) { // Corrected from TIMEOUT
+              if (activeGame) {
+                const parts = message.split(' '); // EXPIRED <value>
+                const value = parts.length > 1 ? parts[1] : '';
+                activeGame.handleExpired(socket, value); // Renamed from handleMiss
+              }
             } else {
               broadcastToWeb('LOG_MESSAGE', { from: socket.id, message: message });
             }
@@ -131,6 +143,8 @@ const webServer = http.createServer((req, res) => {
     page = 'quick_draw.html';
   } else if (req.url === '/whack_a_mole') {
     page = 'whack_a_mole.html';
+  } else if (req.url === '/precision_challenge') {
+    page = 'precision_challenge.html';
   }
 
   let filePath = path.join(__dirname, 'assets', page);
@@ -257,6 +271,202 @@ function finishPingTest(targetId) {
 
 
 // --- Start the Servers ---
+let activeGame = null;
+
+function startGame(gameMode, clients) {
+    if (activeGame) {
+        console.log("LOG: A game is already in progress.");
+        return;
+    }
+
+    switch (gameMode) {
+        case 'precision_challenge':
+            activeGame = new PrecisionChallenge(clients);
+            break;
+        // Add other game modes here
+        default:
+            console.log(`WARN: Unknown game mode: ${gameMode}`);
+            return;
+    }
+    activeGame.start();
+}
+
+class PrecisionChallenge {
+    constructor(clients) {
+        this.clients = clients;
+        this.score = 0;
+        this.timeLeft = 90;
+        this.targetTimeout = 3000;
+        this.consecutiveFastHits = 0;
+        this.hitFlurryActive = false;
+        this.gameInterval = null;
+        this.activeTargets = new Map(); // Using a Map to track targets and their state
+    }
+
+    start() {
+        console.log("LOG: Starting Precision Challenge");
+        this.broadcast('gameStart', { timeLeft: this.timeLeft });
+
+        // Pre-configure all connected targets for the game
+        connectedTargets.forEach(target => {
+            // Positive Target Configuration
+            target.write('CONFIG_HIT positive 1 NONE 500 SOLID 0 255 0\n');
+            // Negative Target Configuration
+            target.write('CONFIG_HIT negative 1 NONE 500 SOLID 255 0 0\n');
+            // Hit Flurry Target Configuration
+            target.write('CONFIG_HIT flurry_hit 3 DECREMENTAL 1000 ANIM THEATER_CHASE 0 0 255\n');
+            target.write('CONFIG_INTERIM_HIT flurry_hit 150 SOLID 255 255 255\n');
+        });
+
+        this.gameInterval = setInterval(() => this.tick(), 1000);
+        this.activateRandomTarget();
+    }
+
+    tick() {
+        if (this.hitFlurryActive) return; // Pause timer during flurry
+
+        this.timeLeft--;
+        this.broadcast('updateTimer', { timeLeft: this.timeLeft });
+
+        if (this.timeLeft <= 0) {
+            this.endGame();
+        }
+    }
+
+    activateRandomTarget() {
+        if (this.hitFlurryActive || connectedTargets.length === 0) return;
+
+        // Clear any previous target
+        if (this.activeTargets.size > 0) {
+            const [target] = this.activeTargets.keys();
+            target.write('OFF\n');
+            this.activeTargets.delete(target);
+        }
+
+        const target = connectedTargets[Math.floor(Math.random() * connectedTargets.length)];
+        const isNegative = Math.random() < 0.2;
+        const value = isNegative ? 'negative' : 'positive';
+        const hitConfigId = isNegative ? 'negative' : 'positive';
+        const visualScript = isNegative ? '1000 SOLID 255 0 0' : '1000 SOLID 0 255 0';
+
+        target.write(`ON ${this.targetTimeout} ${value} ${hitConfigId} ${visualScript}\n`);
+        this.activeTargets.set(target, { value, activationTime: Date.now() });
+    }
+
+    handleHit(target, value) {
+        if (!this.activeTargets.has(target)) return; // Ignore hits on non-active targets
+
+        const { activationTime } = this.activeTargets.get(target);
+        const reactionTime = Date.now() - activationTime;
+
+        if (this.hitFlurryActive) {
+            // In a flurry, any hit is a good hit
+            this.score += 1000; // Bonus for flurry hits
+            // Check if all flurry targets are done
+            const flurryTargets = Array.from(this.activeTargets.keys());
+            const allDone = flurryTargets.every(t => !this.activeTargets.has(t)); // This logic needs refinement
+            if (allDone) {
+                this.endHitFlurry();
+            }
+        } else {
+            if (value === 'positive') {
+                const points = Math.max(100, 1500 - reactionTime); // Higher potential score
+                this.score += points;
+                this.targetTimeout = Math.max(500, this.targetTimeout - (reactionTime < 800 ? 150 : -200));
+                this.consecutiveFastHits = reactionTime < 800 ? this.consecutiveFastHits + 1 : 0;
+            } else if (value === 'negative') {
+                this.score -= 500;
+                this.targetTimeout += 500;
+                this.consecutiveFastHits = 0;
+            }
+
+            if (this.consecutiveFastHits >= 5) {
+                this.triggerHitFlurry();
+            } else {
+                this.activateRandomTarget();
+            }
+        }
+        this.broadcast('updateScore', { score: this.score });
+    }
+
+    handleExpired(target, value) {
+        if (!this.activeTargets.has(target)) return; // Ignore expired events from non-active targets
+
+        if (this.hitFlurryActive) return; // In a flurry, we don't care about timeouts
+
+        const { value: targetValue } = this.activeTargets.get(target);
+
+        if (targetValue === 'positive') {
+            // This was a missed positive target
+            this.targetTimeout += 1000; // Slow down dramatically
+            this.consecutiveFastHits = 0;
+        } else if (targetValue === 'negative') {
+            // This was a correctly ignored negative target
+            this.score += 100; // Patience bonus
+        }
+
+        this.broadcast('updateScore', { score: this.score });
+        this.activateRandomTarget(); // Move to the next target
+    }
+
+    triggerHitFlurry() {
+        console.log("LOG: Triggering Hit Flurry!");
+        this.hitFlurryActive = true;
+        this.consecutiveFastHits = 0;
+        this.broadcast('hitFlurryStart');
+
+        // Turn off the single target
+        if (this.activeTargets.size > 0) {
+            const [target] = this.activeTargets.keys();
+            target.write('OFF\n');
+            this.activeTargets.delete(target);
+        }
+
+        const targetsToArm = connectedTargets.slice(0, Math.min(connectedTargets.length, 4));
+        targetsToArm.forEach(target => {
+            target.write('ON 15000 flurry_hit flurry_hit 1000 ANIM PULSE 0 0 255\n');
+            this.activeTargets.set(target, { value: 'flurry_hit', activationTime: Date.now() });
+        });
+
+        // Set a timeout to end the flurry
+        setTimeout(() => this.endHitFlurry(), 15000);
+    }
+
+    endHitFlurry() {
+        if (!this.hitFlurryActive) return;
+        console.log("LOG: Ending Hit Flurry.");
+        this.hitFlurryActive = false;
+
+        this.activeTargets.forEach((_state, target) => {
+            target.write('OFF\n');
+        });
+        this.activeTargets.clear();
+
+        this.broadcast('hitFlurryEnd');
+        this.activateRandomTarget();
+    }
+
+    endGame() {
+        console.log("LOG: Game Over");
+        clearInterval(this.gameInterval);
+        this.activeTargets.forEach((_state, target) => {
+            target.write('OFF\n');
+        });
+        this.activeTargets.clear();
+        this.broadcast('gameOver', { finalScore: this.score });
+        activeGame = null;
+    }
+
+    broadcast(type, payload) {
+        const message = JSON.stringify({ type, payload });
+        for (const client of this.clients) {
+            client.send(message);
+        }
+    }
+}
+
+
+// --- Start the Servers ---
 const wss = new WebSocket.Server({ server: webServer });
 wss.on('connection', (ws) => {
   console.log('LOG: Web UI client connected.');
@@ -295,6 +505,11 @@ wss.on('connection', (ws) => {
       } else {
         console.log(`WARN: Target ${data.targetId} not found for ping test.`);
       }
+      return;
+    }
+
+    if (data.command === 'start-game') {
+      startGame(data.gameMode, webClients);
       return;
     }
 

@@ -112,7 +112,10 @@ ws.onmessage = (event) => {
 
 document.getElementById('start-game-link').addEventListener('click', () => {
     const selectedGame = document.getElementById('game-mode-select').value;
-    if (selectedGame === 'quick_draw') {
+    if (selectedGame === 'precision_challenge') {
+        ws.send(JSON.stringify({ command: 'start-game', gameMode: 'precision_challenge' }));
+        window.location.href = '/precision_challenge';
+    } else if (selectedGame === 'quick_draw') {
         window.location.href = '/quick_draw';
     } else if (selectedGame === 'whack_a_mole') {
         window.location.href = '/whack_a_mole';
