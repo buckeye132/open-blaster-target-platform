@@ -204,7 +204,14 @@ function handleWebMessage(data) {
         } else {
             console.log(`WARN: Unknown game mode: ${data.gameMode}`);
         }
-    } else if (data.command === 'calibrate-piezo') {
+    } else if (data.command === 'stop-game') {
+        if (activeGame) {
+            activeGame.stop();
+            activeGame = null;
+            console.log("LOG: Game stopped by user request.");
+        } else {
+            console.log("WARN: No active game to stop.");
+        }
         const target = connectedTargets.get(data.targetId);
         if (target) {
             target.configureThreshold();

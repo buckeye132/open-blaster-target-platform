@@ -7,6 +7,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const gameTitleElement = document.getElementById('game-title');
     const gameSpecificContentElement = document.getElementById('game-specific-content');
+    const stopGameButton = document.getElementById('stop-game-button');
+
+    // Establish WebSocket connection
+    const ws = new WebSocket(`ws://${window.location.host}`);
+
+    stopGameButton.addEventListener('click', () => {
+        if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ command: 'stop-game' }));
+            console.log('Sent stop-game command');
+        } else {
+            console.warn('WebSocket not open. Cannot send stop-game command.');
+        }
+    });
 
     if (gameType) {
         gameTitleElement.textContent = gameType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
