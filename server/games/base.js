@@ -72,7 +72,7 @@ class Game extends EventEmitter {
 
         // 3. Start the actual game logic
         console.log("LOG: Starting core game logic.");
-        this.start();
+        await this.start();
     }
 
     /**

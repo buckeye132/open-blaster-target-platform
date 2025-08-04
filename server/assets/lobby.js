@@ -129,6 +129,8 @@ gameModeSelect.addEventListener('change', () => {
         whackAMoleSettings.style.display = 'block';
     } else if (gameModeSelect.value === 'precision_challenge') {
         precisionChallengeSettings.style.display = 'block';
+    } else if (gameModeSelect.value === 'demo') {
+        // No settings for demo mode
     }
 });
 
