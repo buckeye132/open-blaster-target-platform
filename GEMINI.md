@@ -39,6 +39,10 @@ Finally, add your new game mode to the lobby so that it can be selected by the u
 - **Edit `server/assets/lobby.js`:**
     - **Handle Game Settings:** If your game has custom settings, you'll need to add logic to the `gameModeSelect` event listener to show/hide the settings UI.
 
+## Commit Messages
+
+All commit messages should follow the [Conventional Commits](https://www.conventionalcommits.org/) specification. This ensures a consistent and readable commit history.
+
 ### Common Pitfalls
 
 - **Missing Frontend File:** Forgetting to create the frontend JavaScript file in `server/assets/` will result in a 404 error when you try to start the game.
