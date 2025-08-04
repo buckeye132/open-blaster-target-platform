@@ -39,6 +39,14 @@ Finally, add your new game mode to the lobby so that it can be selected by the u
 - **Edit `server/assets/lobby.js`:**
     - **Handle Game Settings:** If your game has custom settings, you'll need to add logic to the `gameModeSelect` event listener to show/hide the settings UI.
 
+## Working on a Roadmap Feature
+
+When working on a feature from the [roadmap](docs/roadmap.md), please follow these steps:
+
+1.  **Create a new branch:** Always start by creating a new branch from the `main` branch. Name your branch something descriptive (e.g., `feat/simon-says-game-mode`).
+2.  **Commit incrementally:** Make small, incremental commits to your feature branch. This makes it easier to review your changes and track your progress.
+3.  **Reference the roadmap:** When you are finished, open a pull request and reference the roadmap item you are addressing.
+
 ## Commit Messages
 
 All commit messages should follow the [Conventional Commits](https://www.conventionalcommits.org/) specification. This ensures a consistent and readable commit history.
