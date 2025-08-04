@@ -21,6 +21,7 @@ const os = require('os');
 const WebSocket = require('ws');
 const fs = require('fs');
 const path = require('path');
+const { URL } = require('url');
 
 // Import custom classes
 const Target = require('./target');
@@ -109,28 +110,23 @@ const tcpServer = net.createServer((socket) => {
 // --- Web Server (for the UI) ---
 const webServer = http.createServer((req, res) => {
     let page;
-    switch (req.url) {
+    const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
+    switch (parsedUrl.pathname) {
         case '/':
             page = 'index.html';
             break;
         case '/lobby':
             page = 'lobby.html';
             break;
-        case '/precision_challenge':
-            page = 'precision_challenge.html';
-            break;
-        case '/quick_draw':
-            page = 'quick_draw.html';
-            break;
-        case '/whack_a_mole':
-            page = 'whack_a_mole.html';
+        case '/game':
+            page = 'game.html';
             break;
         case '/diagnostics':
             page = 'diagnostics.html';
             break;
         // Add other game pages here as they are refactored
         default:
-            page = req.url.substring(1);
+            page = parsedUrl.pathname.substring(1);
             break;
     }
 
@@ -197,7 +193,7 @@ function handleWebMessage(data) {
         const GameClass = gameModes[data.gameMode];
         if (GameClass) {
             const targets = Array.from(connectedTargets.values());
-            activeGame = new GameClass(webClients, targets, data.options);
+            activeGame = new GameClass(webClients, targets, data.options || {});
             activeGame.setupAndStart(); // This now handles the entire setup and game start
 
             // Listen for the game to end to clean up

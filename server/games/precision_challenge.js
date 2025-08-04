@@ -17,10 +17,10 @@
 const Game = require('./base');
 
 class PrecisionChallenge extends Game {
-    constructor(clients, targets) {
+    constructor(clients, targets, options) {
         super(clients, targets);
         this.score = 0;
-        this.timeLeft = 90;
+        this.timeLeft = 30;
         this.targetTimeout = 3000;
         this.consecutiveFastHits = 0;
         this.hitFlurryActive = false;

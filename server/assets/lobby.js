@@ -106,7 +106,31 @@ ws.onmessage = (event) => {
     }
 };
 
-document.getElementById('start-game-link').addEventListener('click', () => {
-    const selectedGame = document.getElementById('game-mode-select').value;
-    window.location.href = `/${selectedGame}`;
+const gameModeSelect = document.getElementById('game-mode-select');
+const startGameButton = document.getElementById('start-game-button');
+const whackAMoleSettings = document.getElementById('whack-a-mole-settings');
+const gameLengthInput = document.getElementById('game-length');
+const targetTimeoutInput = document.getElementById('target-timeout');
+
+gameModeSelect.addEventListener('change', () => {
+    if (gameModeSelect.value === 'whack_a_mole') {
+        whackAMoleSettings.style.display = 'block';
+    } else {
+        whackAMoleSettings.style.display = 'none';
+    }
 });
+
+startGameButton.addEventListener('click', () => {
+    const selectedGame = gameModeSelect.value;
+    let url = `/game?game=${selectedGame}`;
+
+    if (selectedGame === 'whack_a_mole') {
+        const gameLength = gameLengthInput.value;
+        const targetTimeout = targetTimeoutInput.value;
+        url += `&gameLength=${gameLength}&targetTimeout=${targetTimeout}`;
+    }
+    window.location.href = url;
+});
+
+// Initial check for settings display
+gameModeSelect.dispatchEvent(new Event('change'));

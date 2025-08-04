@@ -17,7 +17,7 @@
 const Game = require('./base');
 
 class QuickDraw extends Game {
-    constructor(clients, targets) {
+    constructor(clients, targets, options) {
         super(clients, targets);
         this.activeTarget = null;
         this.gameTimeout = null;
