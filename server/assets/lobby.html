@@ -71,14 +71,20 @@
             <option value="quick_draw">Quick Draw</option>
             <option value="whack_a_mole">Whack-a-Mole</option>
         </select>
+        <div id="precision-challenge-settings" style="display: none;">
+            <div class="command-group">
+                <label for="pc-game-length">Game Length (seconds)</label>
+                <input type="number" id="pc-game-length" value="30">
+            </div>
+        </div>
         <div id="whack-a-mole-settings" style="display: none;">
             <div class="command-group">
-                <label for="game-length">Game Length (seconds)</label>
-                <input type="number" id="game-length" value="15">
+                <label for="wam-game-length">Game Length (seconds)</label>
+                <input type="number" id="wam-game-length" value="15">
             </div>
             <div class="command-group">
-                <label for="target-timeout">Target Activation Time (ms)</label>
-                <input type="number" id="target-timeout" value="1000">
+                <label for="wam-target-timeout">Target Activation Time (ms)</label>
+                <input type="number" id="wam-target-timeout" value="1000">
             </div>
         </div>
         <button id="start-game-button">Start Game</button>

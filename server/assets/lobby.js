@@ -109,14 +109,19 @@ ws.onmessage = (event) => {
 const gameModeSelect = document.getElementById('game-mode-select');
 const startGameButton = document.getElementById('start-game-button');
 const whackAMoleSettings = document.getElementById('whack-a-mole-settings');
-const gameLengthInput = document.getElementById('game-length');
-const targetTimeoutInput = document.getElementById('target-timeout');
+const wamGameLengthInput = document.getElementById('wam-game-length');
+const wamTargetTimeoutInput = document.getElementById('wam-target-timeout');
+const precisionChallengeSettings = document.getElementById('precision-challenge-settings');
+const pcGameLengthInput = document.getElementById('pc-game-length');
 
 gameModeSelect.addEventListener('change', () => {
+    whackAMoleSettings.style.display = 'none';
+    precisionChallengeSettings.style.display = 'none';
+
     if (gameModeSelect.value === 'whack_a_mole') {
         whackAMoleSettings.style.display = 'block';
-    } else {
-        whackAMoleSettings.style.display = 'none';
+    } else if (gameModeSelect.value === 'precision_challenge') {
+        precisionChallengeSettings.style.display = 'block';
     }
 });
 
@@ -125,9 +130,12 @@ startGameButton.addEventListener('click', () => {
     let url = `/game?game=${selectedGame}`;
 
     if (selectedGame === 'whack_a_mole') {
-        const gameLength = gameLengthInput.value;
-        const targetTimeout = targetTimeoutInput.value;
+        const gameLength = wamGameLengthInput.value;
+        const targetTimeout = wamTargetTimeoutInput.value;
         url += `&gameLength=${gameLength}&targetTimeout=${targetTimeout}`;
+    } else if (selectedGame === 'precision_challenge') {
+        const gameLength = pcGameLengthInput.value;
+        url += `&gameLength=${gameLength}`;
     }
     window.location.href = url;
 });

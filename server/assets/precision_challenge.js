@@ -4,7 +4,7 @@ let scoreDisplay;
 let messageDisplay;
 
 let score = 0;
-let timeLeft = 30;
+let timeLeft;
 let hitFlurryActive = false;
 
 let gameTimerInterval = null;
@@ -12,7 +12,7 @@ let gameTimerInterval = null;
 window.initGame = (options) => {
     const gameSpecificContent = document.getElementById('game-specific-content');
     gameSpecificContent.innerHTML = `
-        <div id="timer">Time: ${timeLeft}</div>
+        <div id="timer">Time: ${options.gameLength || 30}</div>
         <div id="score">Score: ${score}</div>
         <div id="message"></div>
     `;
@@ -25,7 +25,7 @@ window.initGame = (options) => {
 
     socket.addEventListener('open', () => {
         console.log('Connected to server');
-        socket.send(JSON.stringify({ command: 'start-game', gameMode: 'precision_challenge' }));
+        socket.send(JSON.stringify({ command: 'start-game', gameMode: 'precision_challenge', options: options }));
     });
 
     socket.addEventListener('message', (event) => {

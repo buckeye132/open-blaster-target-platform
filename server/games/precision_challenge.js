@@ -20,7 +20,7 @@ class PrecisionChallenge extends Game {
     constructor(clients, targets, options) {
         super(clients, targets);
         this.score = 0;
-        this.timeLeft = 30;
+        this.timeLeft = options.gameLength || 30;
         this.targetTimeout = 3000;
         this.consecutiveFastHits = 0;
         this.hitFlurryActive = false;

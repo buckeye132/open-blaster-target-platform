@@ -21,6 +21,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (gameType === 'whack_a_mole') {
                     gameOptions.gameLength = gameLength ? parseInt(gameLength) : 15;
                     gameOptions.targetTimeout = targetTimeout ? parseInt(targetTimeout) : 1000;
+                } else if (gameType === 'precision_challenge') {
+                    gameOptions.gameLength = gameLength ? parseInt(gameLength) : 30;
                 }
                 window.initGame(gameOptions);
             }
