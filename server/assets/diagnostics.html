@@ -27,8 +27,10 @@
         <div class="command-group">
           <label for="threshold">CONFIG_THRESHOLD</label>
           <input type="number" id="threshold" value="150">
-          <button onclick="sendCommand('CONFIG_THRESHOLD', document.getElementById('threshold').value)">Send</button>
-          <button onclick="calibratePiezo()">Auto-Calibrate</button>
+          <div class="button-group">
+            <button onclick="sendCommand('CONFIG_THRESHOLD', document.getElementById('threshold').value)">Send</button>
+            <button onclick="calibratePiezo()">Auto-Calibrate</button>
+          </div>
         </div>
 
         <div class="command-group">
@@ -40,8 +42,10 @@
             <option value="DECREMENTAL">Health Bar: DECREMENTAL</option>
           </select>
           <textarea id="hit_script" rows="2" placeholder="visual_script (e.g., 1000 ANIM THEATER_CHASE 255 165 0)"></textarea>
-          <button onclick="sendConfigHit()">Send CONFIG_HIT</button>
-          <button onclick="sendConfigInterimHit()">Send CONFIG_INTERIM_HIT</button>
+          <div class="button-group">
+            <button onclick="sendConfigHit()">Send CONFIG_HIT</button>
+            <button onclick="sendConfigInterimHit()">Send CONFIG_INTERIM_HIT</button>
+          </div>
         </div>
 
         <div class="command-group">
@@ -50,35 +54,43 @@
           <input type="text" id="on_value" placeholder="value (e.g., positive)">
           <input type="text" id="on_hit_id" placeholder="hit_config_id">
           <textarea id="on_script" rows="2" placeholder="visual_script (e.g., 1000 SOLID 0 255 0)"></textarea>
-          <button onclick="sendOn()">Send ON</button>
+          <div class="button-group">
+            <button onclick="sendOn()">Send ON</button>
+          </div>
         </div>
 
         <div class="command-group">
           <label>DISPLAY</label>
           <input type="number" id="display_loops" placeholder="loop_count" value="1">
           <textarea id="display_script" rows="2" placeholder="visual_script"></textarea>
-          <button onclick="sendDisplay()">Send DISPLAY</button>
+          <div class="button-group">
+            <button onclick="sendDisplay()">Send DISPLAY</button>
+          </div>
         </div>
         
         <div class="command-group">
-          <button onclick="sendCommand('OFF')">Send OFF</button>
-          <button onclick="sendCommand('STATUS_REQUEST')">Send STATUS_REQUEST</button>
-          <button onclick="pingTarget()">Ping Target</button>
+          <div class="button-group">
+            <button onclick="sendCommand('OFF')">Send OFF</button>
+            <button onclick="sendCommand('STATUS_REQUEST')">Send STATUS_REQUEST</button>
+            <button onclick="pingTarget()">Ping Target</button>
+          </div>
         </div>
       </div>
       <div class="panel">
         <h2>Animation Library</h2>
         <div class="command-group">
             <p>Click to preview an animation for 5 seconds.</p>
-            <button onclick="testAnimation('PULSE', '0, 255, 255')">PULSE</button>
-            <button onclick="testAnimation('THEATER_CHASE', '255, 165, 0')">THEATER_CHASE</button>
-            <button onclick="testAnimation('RAINBOW_CYCLE', '0,0,0')">RAINBOW_CYCLE</button>
-            <button onclick="testAnimation('COMET', '255, 255, 255')">COMET</button>
-            <button onclick="testAnimation('WIPE', '0, 0, 255')">WIPE</button>
-            <button onclick="testAnimation('CYLON', '255, 0, 0')">CYLON</button>
-            <button onclick="testAnimation('SPARKLE', '255, 255, 0')">SPARKLE</button>
-            <button onclick="testAnimation('FIRE', '255, 69, 0')">FIRE</button>
-            <button onclick="testAnimation('CONVERGE', '0, 255, 0')">CONVERGE</button>
+            <div class="button-group">
+                <button onclick="testAnimation('PULSE', '0, 255, 255')">PULSE</button>
+                <button onclick="testAnimation('THEATER_CHASE', '255, 165, 0')">THEATER_CHASE</button>
+                <button onclick="testAnimation('RAINBOW_CYCLE', '0,0,0')">RAINBOW_CYCLE</button>
+                <button onclick="testAnimation('COMET', '255, 255, 255')">COMET</button>
+                <button onclick="testAnimation('WIPE', '0, 0, 255')">WIPE</button>
+                <button onclick="testAnimation('CYLON', '255, 0, 0')">CYLON</button>
+                <button onclick="testAnimation('SPARKLE', '255, 255, 0')">SPARKLE</button>
+                <button onclick="testAnimation('FIRE', '255, 69, 0')">FIRE</button>
+                <button onclick="testAnimation('CONVERGE', '0, 255, 0')">CONVERGE</button>
+            </div>
         </div>
         <h2>Target Log</h2>
         <div id="log"></div>
@@ -86,7 +98,9 @@
       <div class="panel" id="test-panel">
         <h2>Full Test Routine</h2>
         <p>This will run a full diagnostic test against the selected target. Follow the on-screen prompts.</p>
-        <button id="startTestBtn" onclick="runTestRoutine()">Start Test Routine</button>
+        <div class="button-group">
+            <button id="startTestBtn" onclick="runTestRoutine()">Start Test Routine</button>
+        </div>
         <div id="test-status"></div>
       </div>
       <div class="panel" id="ping-test-panel">
@@ -95,8 +109,10 @@
         <div class="command-group">
             <label for="ping-count">Number of Pings:</label>
             <input type="number" id="ping-count" value="20">
-            <button id="startPingTestBtn" onclick="runPingTest(false)">Start Latency Test</button>
-            <button id="startPingTestDebugBtn" onclick="runPingTest(true)">Latency Test w/ Timing Debug</button>
+            <div class="button-group">
+                <button id="startPingTestBtn" onclick="runPingTest(false)">Start Latency Test</button>
+                <button id="startPingTestDebugBtn" onclick="runPingTest(true)">Latency Test w/ Timing Debug</button>
+            </div>
         </div>
         <div id="ping-test-status"></div>
         <div id="ping-test-results"></div>

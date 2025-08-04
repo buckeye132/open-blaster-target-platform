@@ -37,9 +37,11 @@ function renderTargetCard(targetId) {
     card.innerHTML = `
         <h3>${targetId}</h3>
         <div class="status" id="status-${targetId.replace(/[:.]/g, '-')}">Idle</div>
-        <button onclick="testLeds('${targetId}')">Test LEDs</button>
-        <button onclick="testHit('${targetId}')">Test Hit</button>
-        <button onclick="calibrateTarget('${targetId}')">Calibrate</button>
+        <div class="button-group">
+            <button onclick="testLeds('${targetId}')">Test LEDs</button>
+            <button onclick="testHit('${targetId}')">Test Hit</button>
+            <button onclick="calibrateTarget('${targetId}')">Calibrate</button>
+        </div>
     `;
     card.classList.toggle('offline', !target.online);
 }
@@ -117,6 +119,11 @@ const pcGameLengthInput = document.getElementById('pc-game-length');
 gameModeSelect.addEventListener('change', () => {
     whackAMoleSettings.style.display = 'none';
     precisionChallengeSettings.style.display = 'none';
+
+    // Hide all game settings initially
+    document.querySelectorAll('.game-settings').forEach(el => {
+        el.style.display = 'none';
+    });
 
     if (gameModeSelect.value === 'whack_a_mole') {
         whackAMoleSettings.style.display = 'block';

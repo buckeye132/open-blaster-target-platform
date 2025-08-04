@@ -221,6 +221,11 @@ function handleWebMessage(data) {
         if (target) {
             target.display(1, '250 SOLID 255 255 255 | 250 SOLID 0 0 0 | 250 SOLID 255 255 255 | 250 SOLID 0 0 0');
         }
+    } else if (data.command === 'calibrate-piezo') {
+      const target = connectedTargets.get(data.targetId);
+        if (target) {
+          target.configureThreshold(null);
+        }
     } else if (data.command === 'test-hit') {
         const target = connectedTargets.get(data.targetId);
         if (target) {
