@@ -36,7 +36,7 @@ WiFiClient tcpClient;
 CRGB leds[NUM_LEDS];
 
 // --- State Management ---
-enum TargetState { IDLE, READY, DISPLAYING, HIT_ANIMATION };
+enum TargetState { IDLE, READY, DISPLAYING, HIT_ANIMATION, HIT_DEBOUNCE };
 TargetState currentState = IDLE;
 String currentCommand = ""; // For status reporting
 
@@ -73,6 +73,13 @@ String activeHitConfigId = "";
 unsigned long targetReadyTime = 0;
 unsigned long timeoutExpireTime = 0;
 String commandBuffer = ""; // Using String for simplicity with corrected parsing
+
+// --- Hit Debounce & Debug Variables ---
+int lastPeakReading = 0;
+int debounceReadings = 0;
+unsigned long debounceStartTime = 0;
+bool postHitDebugEnabled = false;
+unsigned long postHitDebugEndTime = 0;
 
 // --- Visual Script Executor Variables ---
 std::vector<VisualStep> activeScript;
@@ -165,25 +172,41 @@ void loop() {
   // --- State Machine ---
   unsigned long stateMachineStart = micros();
   uint16_t piezo_read = analogRead(PIEZO_PIN);
-  if (piezo_read > 0) {
-    Serial.printf("LOG: PIEZO: %u\n", piezo_read);
+
+  // --- High-Frequency Post-Hit Debug Logic ---
+  if (postHitDebugEndTime > 0 && millis() < postHitDebugEndTime) {
+    Serial.printf("POST_HIT_DEBUG: %u\n", piezo_read);
+  } else if (postHitDebugEndTime > 0 && millis() >= postHitDebugEndTime) {
+    postHitDebugEndTime = 0; // Stop logging
+    Serial.println("LOG: Post-hit debug logging finished.");
   }
+
   if (currentState == READY) {
     if (piezo_read > piezoThreshold) {
-      Serial.println("LOG: Hit detected in READY state.");
+      Serial.printf("LOG: Hit detected! Reading: %u, Threshold: %u\n", piezo_read, piezoThreshold);
+      lastPeakReading = piezo_read;
       currentHitCount++;
       unsigned long reaction = millis() - targetReadyTime;
       
       HitConfig& config = hitConfigs[activeHitConfigId];
+      Serial.printf("LOG: Hit count is now %d of %d required.\n", currentHitCount, config.hitsRequired);
       
+      if (postHitDebugEnabled) {
+        postHitDebugEndTime = millis() + 100; // Log for 100ms after the hit
+      }
+
       if (currentHitCount >= config.hitsRequired) {
         char buffer[128];
         snprintf(buffer, sizeof(buffer), "HIT %lu %s\n", reaction, activeValue.c_str());
         responseBuffer += buffer;
+        Serial.println("LOG: Final hit registered. Changing state to HIT_ANIMATION.");
         currentState = HIT_ANIMATION;
         startVisualScript(config.script, 1);
       } else {
-        Serial.println("LOG: Interim hit detected.");
+        Serial.println("LOG: Interim hit registered. Changing state to HIT_DEBOUNCE.");
+        debounceReadings = 0; // Reset the counter for the new debounce cycle
+        debounceStartTime = millis(); // Record the start time
+        currentState = HIT_DEBOUNCE;
         if (interimHitConfigs.count(activeHitConfigId)) {
             Serial.println("LOG: Playing interim hit animation.");
             startVisualScript(interimHitConfigs[activeHitConfigId], 1);
@@ -194,8 +217,24 @@ void loop() {
         char buffer[128];
         snprintf(buffer, sizeof(buffer), "EXPIRED %s\n", activeValue.c_str());
         responseBuffer += buffer;
+        Serial.println("LOG: Target expired. Stopping all actions.");
         stopAllActions();
     }
+  } else if (currentState == HIT_DEBOUNCE) {
+      uint16_t troughValue = lastPeakReading * 0.5;
+      if (timingDebugMode) Serial.printf("DEBUG: In debounce. Reading: %u, Trough Target: %u, Consecutive Readings: %d\n", piezo_read, troughValue, debounceReadings);
+      
+      if (piezo_read < troughValue) {
+          debounceReadings++;
+      } else {
+          debounceReadings = 0; // Reset if we go above the trough
+      }
+
+      if (debounceReadings >= 3) {
+          unsigned long debounceDuration = millis() - debounceStartTime;
+          Serial.printf("LOG: Debounce complete after %lu ms. Changing state to READY.\n", debounceDuration);
+          currentState = READY;
+      }
   }
   stateMachineTime = micros() - stateMachineStart;
 
@@ -280,7 +319,7 @@ void parseAndExecuteCommand(String command) {
     } else {
       autoCalibratePiezoThreshold();
     }
-  } 
+  }
   else if (cmdType == "CONFIG_HIT") {
     String id = tokens[1];
     hitConfigs[id].hitsRequired = tokens[2].toInt();
@@ -327,11 +366,22 @@ void parseAndExecuteCommand(String command) {
     snprintf(buffer, sizeof(buffer), "LOG Timing debug mode is now %s\n", timingDebugMode ? "ON" : "OFF");
     responseBuffer += buffer;
   }
+  else if (cmdType == "POST_HIT_DEBUG") {
+    postHitDebugEnabled = !postHitDebugEnabled;
+    char buffer[64];
+    snprintf(buffer, sizeof(buffer), "LOG: Post-hit debug logging is now %s\n", postHitDebugEnabled ? "ON" : "OFF");
+    responseBuffer += buffer;
+  }
 }
 
 void startVisualScript(const std::vector<VisualStep>& script, int loops) {
     if (script.empty()) {
-        stopAllActions();
+        // If we are in the debounce state, we must return to ready, not idle.
+        if (currentState == HIT_DEBOUNCE) {
+            currentState = READY;
+        } else {
+            stopAllActions();
+        }
         return;
     }
     activeScript = script;
@@ -552,6 +602,8 @@ void updateVisuals() {
         if (currentState == DISPLAYING || currentState == HIT_ANIMATION) {
             stopAllActions();
         }
+        // NOTE: We no longer automatically transition from HIT_DEBOUNCE to READY here.
+        // That transition is now handled exclusively in the main loop based on the sensor reading.
         return;
     }
 

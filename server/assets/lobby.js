@@ -19,10 +19,9 @@ const targetGrid = document.getElementById('target-grid');
 
 let targets = {}; // Store target state
 
-function sendCommandToServer(targetId, command, ...args) {
-  const commandStr = [command, ...args].join(' ').trim();
-  ws.send(JSON.stringify({ targetId, command: commandStr }));
-  console.log(`> [${targetId}] ${commandStr}`);
+function sendCommandToServer(targetId, command) {
+  ws.send(JSON.stringify({ targetId, command }));
+  console.log(`> [${targetId}] ${command}`);
 }
 
 function renderTargetCard(targetId) {
@@ -59,15 +58,12 @@ window.calibrateTarget = (targetId) => {
 };
 
 window.testLeds = (targetId) => {
-    sendCommandToServer(targetId, 'DISPLAY', '1', '250 SOLID 255 255 255 | 250 SOLID 0 0 0 | 250 SOLID 255 255 255 | 250 SOLID 0 0 0');
+    sendCommandToServer(targetId, 'test-leds');
     updateTargetStatus(targetId, 'LEDs Tested');
 };
 
 window.testHit = (targetId) => {
-    // First, configure a simple hit
-    sendCommandToServer(targetId, 'CONFIG_HIT', 'lobby_test', '1', 'NONE', '500 SOLID 0 255 0');
-    // Then, turn the target on
-    sendCommandToServer(targetId, 'ON', '5000', 'test_hit', 'lobby_test', '1000 ANIM PULSE 255 165 0');
+    sendCommandToServer(targetId, 'test-hit');
     updateTargetStatus(targetId, 'Waiting for hit...');
 };
 
@@ -112,12 +108,5 @@ ws.onmessage = (event) => {
 
 document.getElementById('start-game-link').addEventListener('click', () => {
     const selectedGame = document.getElementById('game-mode-select').value;
-    if (selectedGame === 'precision_challenge') {
-        ws.send(JSON.stringify({ command: 'start-game', gameMode: 'precision_challenge' }));
-        window.location.href = '/precision_challenge';
-    } else if (selectedGame === 'quick_draw') {
-        window.location.href = '/quick_draw';
-    } else if (selectedGame === 'whack_a_mole') {
-        window.location.href = '/whack_a_mole';
-    }
+    window.location.href = `/${selectedGame}`;
 });

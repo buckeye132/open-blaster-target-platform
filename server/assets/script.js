@@ -33,23 +33,55 @@ let currentTestStep = 0;
 let testTargetId = '';
 let messageResolver = null;
 
-function sendCommandToServer(targetId, command, ...args) {
+function sendCommandToServer(targetId, command, payload = {}) {
   if (!targetId) {
     logEl.innerHTML += '<strong>ERROR: No target selected.</strong><br>';
     return;
   }
-  const commandStr = [command, ...args].join(' ').trim();
-  ws.send(JSON.stringify({ targetId, command: commandStr }));
-  logEl.innerHTML += '<strong>&gt; [' + targetId + '] ' + commandStr + '</strong><br>';
+  const message = { command, targetId, ...payload };
+  ws.send(JSON.stringify(message));
+  logEl.innerHTML += `<strong>&gt; [${targetId}] ${command} ${JSON.stringify(payload)}</strong><br>`;
   logEl.scrollTop = logEl.scrollHeight;
 }
 
 // Helper functions to grab values and send
-const sendCommand = (cmd, ...args) => sendCommandToServer(targetSelector.value, cmd, ...args);
-const sendConfigHit = () => sendCommandToServer(targetSelector.value, 'CONFIG_HIT', document.getElementById('hit_id').value, document.getElementById('hits_req').value, document.getElementById('health_bar').value, document.getElementById('hit_script').value);
-const sendConfigInterimHit = () => sendCommandToServer(targetSelector.value, 'CONFIG_INTERIM_HIT', document.getElementById('hit_id').value, document.getElementById('hit_script').value);
-const sendOn = () => sendCommandToServer(targetSelector.value, 'ON', document.getElementById('on_timeout').value, document.getElementById('on_value').value, document.getElementById('on_hit_id').value, document.getElementById('on_script').value);
-const sendDisplay = () => sendCommandToServer(targetSelector.value, 'DISPLAY', document.getElementById('display_loops').value, document.getElementById('display_script').value);
+const sendCommand = (cmd) => sendCommandToServer(targetSelector.value, cmd.toLowerCase());
+
+const sendConfigHit = () => {
+    const payload = {
+        id: document.getElementById('hit_id').value,
+        hits: parseInt(document.getElementById('hits_req').value, 10),
+        healthBar: document.getElementById('health_bar').value,
+        script: document.getElementById('hit_script').value
+    };
+    sendCommandToServer(targetSelector.value, 'config-hit', payload);
+};
+
+const sendConfigInterimHit = () => {
+    const payload = {
+        id: document.getElementById('hit_id').value,
+        script: document.getElementById('hit_script').value
+    };
+    sendCommandToServer(targetSelector.value, 'config-interim-hit', payload);
+};
+
+const sendOn = () => {
+    const payload = {
+        timeout: parseInt(document.getElementById('on_timeout').value, 10),
+        value: document.getElementById('on_value').value,
+        hitId: document.getElementById('on_hit_id').value,
+        script: document.getElementById('on_script').value
+    };
+    sendCommandToServer(targetSelector.value, 'on', payload);
+};
+
+const sendDisplay = () => {
+    const payload = {
+        loopCount: parseInt(document.getElementById('display_loops').value, 10),
+        visualScript: document.getElementById('display_script').value
+    };
+    sendCommandToServer(targetSelector.value, 'display', payload);
+};
 
 function pingTarget() {
   const targetId = targetSelector.value;

@@ -14,8 +14,7 @@ let gameTimerInterval = null;
 
 socket.addEventListener('open', () => {
     console.log('Connected to server');
-    // Start the game
-    // startGame(); // This will be called from the server
+    socket.send(JSON.stringify({ command: 'start-game', gameMode: 'precision_challenge' }));
 });
 
 socket.addEventListener('message', (event) => {

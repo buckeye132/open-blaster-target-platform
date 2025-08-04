@@ -18,86 +18,53 @@ const ws = new WebSocket('ws://' + window.location.host);
 const gameStatusEl = document.getElementById('game-status');
 const scoreboardEl = document.getElementById('scoreboard');
 
-let targets = [];
-let isGameRunning = false;
-
-function sendCommandToServer(targetId, command, ...args) {
-  const commandStr = [command, ...args].join(' ').trim();
-  ws.send(JSON.stringify({ targetId, command: commandStr }));
-  console.log(`> [${targetId}] ${commandStr}`);
-}
-
 function updateStatus(message) {
     gameStatusEl.innerHTML = message;
 }
 
-function updateScoreboard(targetId, score) {
-    scoreboardEl.innerHTML = `<h3>Score</h3><p>${targetId}: ${score} ms</p>`;
-}
-
-async function startGame() {
-    if (isGameRunning) return;
-    isGameRunning = true;
-    updateStatus('Starting Quick Draw...');
-
-    if (targets.length === 0) {
-        updateStatus('No targets connected! Please go back to the lobby.');
-        return;
-    }
-
-    // 1. Configure all targets
-    updateStatus('Configuring targets...');
-    for (const targetId of targets) {
-        sendCommandToServer(targetId, 'CONFIG_HIT', 'quick_draw_hit', '1', 'NONE', '500 SOLID 0 255 0');
-    }
-    await new Promise(r => setTimeout(r, 500)); // Give targets time to process
-
-    // 2. Start the game loop
-    const delay = Math.random() * 3000 + 2000; // 2-5 second delay
-    updateStatus(`Get ready...`);
-    setTimeout(() => {
-        const targetId = targets[Math.floor(Math.random() * targets.length)];
-        updateStatus('GO!');
-        sendCommandToServer(targetId, 'ON', '10000', targetId, 'quick_draw_hit', '1000 ANIM PULSE 255 0 0');
-    }, delay);
-}
-
-function stopGame() {
-    isGameRunning = false;
-    for (const targetId of targets) {
-        sendCommandToServer(targetId, 'OFF');
+function updateScoreboard(winner, score) {
+    if (winner && score) {
+        scoreboardEl.innerHTML = `<h3>Winner!</h3><p>${winner}: ${score}</p>`;
+    } else {
+        scoreboardEl.innerHTML = '';
     }
 }
 
 ws.onmessage = (event) => {
     const data = JSON.parse(event.data);
+    const { type, payload } = data;
 
-    if (data.type === 'TARGET_LIST') {
-        targets = data.payload;
-        if (!isGameRunning) {
-            startGame();
-        }
-    } else if (data.type === 'LOG_MESSAGE') {
-        if (!isGameRunning) return;
-
-        const { from, message } = data.payload;
-        const parts = message.split(' ');
-        const eventType = parts[0];
-
-        if (eventType === 'HIT') {
-            const reactionTime = parseInt(parts[1], 10);
-            updateStatus('HIT!');
-            updateScoreboard(from, reactionTime);
-            isGameRunning = false;
-        } else if (eventType === 'EXPIRED') {
-            updateStatus('Missed! Game over.');
-            stopGame();
-        }
+    switch (type) {
+        case 'gameSetup':
+            updateStatus(payload.message);
+            break;
+        case 'countdown':
+            updateStatus(`Get Ready... ${payload.count}`);
+            break;
+        case 'gameStart':
+            updateStatus(payload.message);
+            updateScoreboard(); // Clear the scoreboard
+            break;
+        case 'gameUpdate':
+            updateStatus(payload.message);
+            break;
+        case 'gameOver':
+            updateStatus(payload.message || 'Game Over!');
+            if (payload.winner) {
+                updateScoreboard(payload.winner, payload.score);
+            }
+            break;
+        case 'TARGET_LIST':
+            // The server now handles all game logic, so we don't need to do anything here.
+            break;
+        default:
+            console.log('Unknown message type:', type);
     }
 };
 
 ws.onopen = () => {
-    // The server will automatically send the target list on connection.
+    console.log('Connected to server.');
+    ws.send(JSON.stringify({ command: 'start-game', gameMode: 'quick_draw' }));
 };
 
 ws.onclose = () => {
