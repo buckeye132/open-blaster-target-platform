@@ -15,6 +15,7 @@ The Open Blaster Target Platform (OBTP) is a community-driven project to build i
 * **Latency-Independent Scoring:** Targets handle hit detection and reaction timing locally for maximum accuracy.
 * **Highly Configurable:** Use the powerful command protocol to control target visuals, hit requirements, and game mechanics.
 * **Fully Open Source:** All hardware designs, firmware, and server software are open source and ready for you to build, modify, and improve.
+* **AI Commentary:** Optional use of Gemini Live to provide live commentary of your target practice!
 
 ---
 
