@@ -87,6 +87,12 @@ class Commentator extends EventEmitter {
         }
     }
 
+    onCustomEvent(custom_event) {
+        if (this.worker && !this.isClosing) {
+            this.worker.postMessage({ type: 'event', event: custom_event });
+        }
+    }
+
     // The close method is now primarily for forceful shutdown if needed, the worker manages its own lifecycle.
     close() {
         if (this.worker && !this.isClosing) {

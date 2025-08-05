@@ -66,7 +66,8 @@ std::map<String, std::vector<VisualStep>> interimHitConfigs;
 // --- Target & Game Variables ---
 String responseBuffer = "";
 bool timingDebugMode = false;
-int piezoThreshold = 500;
+int piezoThreshold = 2000;
+int minAutoCalibrateThreshold = 2000;
 int currentHitCount = 0;
 String activeValue = "";
 String activeHitConfigId = "";
@@ -230,7 +231,7 @@ void loop() {
           debounceReadings = 0; // Reset if we go above the trough
       }
 
-      if (debounceReadings >= 3) {
+      if (debounceReadings >= 9 && (millis() - debounceStartTime >= 25)) {
           unsigned long debounceDuration = millis() - debounceStartTime;
           Serial.printf("LOG: Debounce complete after %lu ms. Changing state to READY.\n", debounceDuration);
           currentState = READY;
@@ -589,7 +590,7 @@ void autoCalibratePiezoThreshold() {
 
   // Set threshold to 2x above the max noise reading
   // use 850 as the min threshold. 
-  piezoThreshold = max(850, (int)(maxPiezoReading * 2));
+  piezoThreshold = max(minAutoCalibrateThreshold, (int)(maxPiezoReading * 2));
 
   char buffer[128];
   snprintf(buffer, sizeof(buffer), "LOG: Auto-calibration complete. Max noise: %d, New threshold: %d\n", maxPiezoReading, piezoThreshold);

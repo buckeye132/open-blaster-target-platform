@@ -16,12 +16,23 @@
 
 const Game = require('./base');
 
+const STARTING_TIMEOUT = 1500;
+const TIMEOUT_STEP = 150;
+const MIN_TIMEOUT = 300;
+
+const HITS_TO_FLURRY = 5;
+const HITS_PER_TARGET_FLURRY = 3;
+const TIME_PER_TARGET_FLURRY = 2500;
+const SCORE_PER_TARGET_FLURRY = 3000;
+
+const FAST_REACTION = 900;
+
 class PrecisionChallenge extends Game {
     constructor(clients, targets, options) {
         super(clients, targets);
         this.score = 0;
         this.timeLeft = options.gameLength || 30;
-        this.targetTimeout = 3000;
+        this.targetTimeout = STARTING_TIMEOUT;
         this.consecutiveFastHits = 0;
         this.hitFlurryActive = false;
         this.gameInterval = null;
@@ -33,9 +44,9 @@ class PrecisionChallenge extends Game {
         this.broadcast('gameStart', { timeLeft: this.timeLeft });
 
         this.targets.forEach(target => {
-            target.configureHit('positive', 1, 'NONE', '500 SOLID 0 255 0');
-            target.configureHit('negative', 1, 'NONE', '500 SOLID 255 0 0');
-            target.configureHit('flurry_hit', 3, 'DECREMENTAL', '1000 ANIM THEATER_CHASE 0 0 255');
+            target.configureHit('positive', 1, 'NONE', '250 SOLID 0 255 0');
+            target.configureHit('negative', 1, 'NONE', '250 SOLID 255 0 0');
+            target.configureHit('flurry_hit', HITS_PER_TARGET_FLURRY, 'DECREMENTAL', '1000 ANIM THEATER_CHASE 0 0 255');
             target.configureInterimHit('flurry_hit', '150 SOLID 255 255 255');
         });
 
@@ -79,7 +90,7 @@ class PrecisionChallenge extends Game {
         const isNegative = Math.random() < 0.2;
         const value = isNegative ? 'negative' : 'positive';
         const hitConfigId = isNegative ? 'negative' : 'positive';
-        const visualScript = isNegative ? '1000 SOLID 255 0 0' : '1000 SOLID 0 255 0';
+        const visualScript = isNegative ? `${this.targetTimeout} SOLID 255 0 0` : `${this.targetTimeout} SOLID 0 255 0`;
 
         target.activate(this.targetTimeout, value, hitConfigId, visualScript);
         this.activeTargets.set(target, { value, activationTime: Date.now() });
@@ -89,7 +100,7 @@ class PrecisionChallenge extends Game {
         if (!this.activeTargets.has(target)) return;
 
         if (this.hitFlurryActive) {
-            this.score += 1000;
+            this.score += SCORE_PER_TARGET_FLURRY;
             this.activeTargets.delete(target);
             if (this.activeTargets.size === 0) {
                 this.endHitFlurry();
@@ -98,16 +109,18 @@ class PrecisionChallenge extends Game {
             if (value === 'positive') {
                 const points = Math.max(100, 1500 - reactionTime);
                 this.score += points;
-                this.targetTimeout = Math.max(500, this.targetTimeout - (reactionTime < 800 ? 150 : -200));
-                this.consecutiveFastHits = reactionTime < 800 ? this.consecutiveFastHits + 1 : 0;
+                this.targetTimeout = Math.max(MIN_TIMEOUT, this.targetTimeout - (TIMEOUT_STEP * (reactionTime < FAST_REACTION ? 1 : -1)));
+                this.consecutiveFastHits = reactionTime < FAST_REACTION ? this.consecutiveFastHits + 1 : 0;
+                console.log(`Reaction Time: ${reactionTime}`);
+                console.log(`New timeout: ${this.targetTimeout}`);
                 console.log(`Consecutive fast: ${this.consecutiveFastHits}`);
             } else if (value === 'negative') {
                 this.score -= 500;
-                this.targetTimeout += 500;
+                this.targetTimeout += TIMEOUT_STEP;
                 this.consecutiveFastHits = 0;
             }
 
-            if (this.consecutiveFastHits >= 4) {
+            if (this.consecutiveFastHits >= HITS_TO_FLURRY) {
                 this.triggerHitFlurry();
             } else {
                 this.activateRandomTarget();
@@ -122,7 +135,7 @@ class PrecisionChallenge extends Game {
         if (this.hitFlurryActive) return;
 
         if (value === 'positive') {
-            this.targetTimeout += 1000;
+            this.targetTimeout += TIMEOUT_STEP;
             this.consecutiveFastHits = 0;
         } else if (value === 'negative') {
             this.score += 100;
@@ -137,6 +150,7 @@ class PrecisionChallenge extends Game {
         this.hitFlurryActive = true;
         this.consecutiveFastHits = 0;
         this.broadcast('hitFlurryStart');
+        this.emit('customEvent', 'HIT_FLURRY: START');
 
         if (this.activeTargets.size > 0) {
             const [target] = this.activeTargets.keys();
@@ -145,17 +159,19 @@ class PrecisionChallenge extends Game {
         }
 
         const targetsToArm = this.targets.slice(0, Math.min(this.targets.length, 4));
+        const totalTime = TIME_PER_TARGET_FLURRY * targetsToArm.length;
         targetsToArm.forEach(target => {
-            target.activate(15000, 'flurry_hit', 'flurry_hit', '1000 ANIM PULSE 0 0 255');
+            target.activate(totalTime, 'flurry_hit', 'flurry_hit', '1000 ANIM PULSE 0 0 255');
             this.activeTargets.set(target, { value: 'flurry_hit', activationTime: Date.now() });
         });
 
-        setTimeout(() => this.endHitFlurry(), 15000);
+        setTimeout(() => this.endHitFlurry(), totalTime);
     }
 
     endHitFlurry() {
         if (!this.hitFlurryActive) return;
         console.log("LOG: Ending Hit Flurry.");
+        this.emit('customEvent', 'HIT_FLURRY: END');
         this.hitFlurryActive = false;
 
         this.activeTargets.forEach((_state, target) => {

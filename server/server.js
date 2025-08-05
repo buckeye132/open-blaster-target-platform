@@ -226,6 +226,7 @@ function handleWebMessage(ws, data) {
                 activeGame.on('miss', () => commentator.onMiss());
                 activeGame.on('timeUpdate', (timeLeft) => commentator.onTimeUpdate(timeLeft));
                 activeGame.on('gameOver', (finalScore) => commentator.onGameOver(finalScore));
+                activeGame.on('customEvent', (event) => commentator.onCustomEvent(event));
                 commentator.start(data.gameMode, data.options || {});
             } else {
               console.log("AI NOT ACTIVE");

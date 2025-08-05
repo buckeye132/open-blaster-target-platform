@@ -54,8 +54,8 @@ async function start(gameMode, gameSettings) {
         systemInstruction = systemInstruction.replace('{{GAME_RULES}}', gameRules).replace('{{GAME_SETTINGS}}', JSON.stringify(gameSettings));
 
         liveSession = await generativeAi.live.connect({
-            //model: 'gemini-live-2.5-flash-preview',
-            model: 'gemini-2.5-flash-preview-native-audio-dialog',
+            model: 'gemini-live-2.5-flash-preview',
+            //model: 'gemini-2.5-flash-preview-native-audio-dialog',
             config: {
                 responseModalities: [Modality.AUDIO],
                 systemInstruction: systemInstruction
@@ -74,10 +74,8 @@ async function start(gameMode, gameSettings) {
 }
 
 function onMessage(message) {
-    console.log("AI: Message recieved");
     // Process the audio data.
     if (speaker && message.serverContent && message.serverContent.modelTurn && message.serverContent.modelTurn.parts) {
-        console.log("AI: Audio recieved");
         for (const part of message.serverContent.modelTurn.parts) {
             if (part.inlineData && part.inlineData.mimeType.startsWith('audio/')) {
                 const audioBuffer = Buffer.from(part.inlineData.data, 'base64');
@@ -112,14 +110,42 @@ function processQueue() {
         return;
     }
 
-    const summary = eventQueue.join('\n');
+    let filteredEvents = [];
+    let latestTimeUpdate = null;
+    let hasGameOver = false;
+
+    for (const event of eventQueue) {
+        if (event.startsWith('TIME_UPDATE')) {
+            latestTimeUpdate = event;
+        } else {
+            filteredEvents.push(event);
+        }
+        if (event.includes('GAME_OVER')) {
+            hasGameOver = true;
+        }
+    }
+
+    // If there's a GAME_OVER event, we don't send any TIME_UPDATE events.
+    // Otherwise, send only the most recent TIME_UPDATE.
+    if (!hasGameOver && latestTimeUpdate) {
+        filteredEvents.push(latestTimeUpdate);
+    }
+
+    const summary = filteredEvents.join('\n');
+
+    // Only send if there's something to send after filtering
+    if (summary.trim().length === 0) {
+        eventQueue = [];
+        return;
+    }
+
     console.log(`AI Worker: Sending event summary:\n${summary}`);
     liveSession.sendClientContent({turns: summary});
     eventQueue = [];
+    isReady = false;
 
     // If the summary we just sent contains the game over event, set the flag.
     if (summary.includes('GAME_OVER')) {
-        console.log("AI: Game over sent");
         isGameOver = true;
     }
 }
