@@ -32,6 +32,7 @@ const PrecisionChallenge = require('./games/precision_challenge');
 const WhackAMole = require('./games/whack_a_mole');
 const QuickDraw = require('./games/quick_draw');
 const Demo = require('./games/demo');
+const SimonSays = require('./games/simon_says');
 
 // --- Configuration ---
 const WEB_PORT = 8080;
@@ -61,7 +62,8 @@ const gameModes = {
     'precision_challenge': PrecisionChallenge,
     'whack_a_mole': WhackAMole,
     'quick_draw': QuickDraw,
-    'demo': Demo
+    'demo': Demo,
+    'simon_says': SimonSays
 };
 
 // --- Helper Functions ---
