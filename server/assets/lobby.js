@@ -76,6 +76,8 @@ const wamGameLengthInput = document.getElementById('wam-game-length');
 const wamTargetTimeoutInput = document.getElementById('wam-target-timeout');
 const precisionChallengeSettings = document.getElementById('precision-challenge-settings');
 const pcGameLengthInput = document.getElementById('pc-game-length');
+const simonSaysSettings = document.getElementById('simon-says-settings');
+const ssGameLengthInput = document.getElementById('ss-game-length');
 const aiCommentaryOption = document.getElementById('ai-commentary-option');
 const enableAiCommentaryCheckbox = document.getElementById('enable-ai-commentary');
 
@@ -142,6 +144,8 @@ gameModeSelect.addEventListener('change', () => {
         whackAMoleSettings.style.display = 'block';
     } else if (gameModeSelect.value === 'precision_challenge') {
         precisionChallengeSettings.style.display = 'block';
+    } else if (gameModeSelect.value === 'simon_says') {
+        simonSaysSettings.style.display = 'block';
     } else if (gameModeSelect.value === 'demo') {
         // No settings for demo mode
     }
@@ -164,6 +168,9 @@ startGameButton.addEventListener('click', () => {
         url += `&gameLength=${gameLength}&targetTimeout=${targetTimeout}`;
     } else if (selectedGame === 'precision_challenge') {
         const gameLength = pcGameLengthInput.value;
+        url += `&gameLength=${gameLength}`;
+    } else if (selectedGame === 'simon_says') {
+        const gameLength = ssGameLengthInput.value;
         url += `&gameLength=${gameLength}`;
     }
     window.location.href = url;
