@@ -33,6 +33,7 @@ const WhackAMole = require('./games/whack_a_mole');
 const QuickDraw = require('./games/quick_draw');
 const Demo = require('./games/demo');
 const SimonSays = require('./games/simon_says');
+const DistractionAlley = require('./games/distraction_alley');
 
 // --- Configuration ---
 const WEB_PORT = 8080;
@@ -63,7 +64,8 @@ const gameModes = {
     'whack_a_mole': WhackAMole,
     'quick_draw': QuickDraw,
     'demo': Demo,
-    'simon_says': SimonSays
+    'simon_says': SimonSays,
+    'distraction_alley': DistractionAlley
 };
 
 // --- Helper Functions ---

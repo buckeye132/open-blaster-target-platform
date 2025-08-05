@@ -78,6 +78,8 @@ const precisionChallengeSettings = document.getElementById('precision-challenge-
 const pcGameLengthInput = document.getElementById('pc-game-length');
 const simonSaysSettings = document.getElementById('simon-says-settings');
 const ssGameLengthInput = document.getElementById('ss-game-length');
+const distractionAlleySettings = document.getElementById('distraction-alley-settings');
+const daGameLengthInput = document.getElementById('da-game-length');
 const aiCommentaryOption = document.getElementById('ai-commentary-option');
 const enableAiCommentaryCheckbox = document.getElementById('enable-ai-commentary');
 
@@ -146,6 +148,8 @@ gameModeSelect.addEventListener('change', () => {
         precisionChallengeSettings.style.display = 'block';
     } else if (gameModeSelect.value === 'simon_says') {
         simonSaysSettings.style.display = 'block';
+    } else if (gameModeSelect.value === 'distraction_alley') {
+        distractionAlleySettings.style.display = 'block';
     } else if (gameModeSelect.value === 'demo') {
         // No settings for demo mode
     }
@@ -171,6 +175,9 @@ startGameButton.addEventListener('click', () => {
         url += `&gameLength=${gameLength}`;
     } else if (selectedGame === 'simon_says') {
         const gameLength = ssGameLengthInput.value;
+        url += `&gameLength=${gameLength}`;
+    } else if (selectedGame === 'distraction_alley') {
+        const gameLength = daGameLengthInput.value;
         url += `&gameLength=${gameLength}`;
     }
     window.location.href = url;

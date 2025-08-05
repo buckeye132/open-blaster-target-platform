@@ -54,6 +54,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     gameOptions.targetTimeout = targetTimeout ? parseInt(targetTimeout) : 1000;
                 } else if (gameType === 'precision_challenge') {
                     gameOptions.gameLength = gameLength ? parseInt(gameLength) : 30;
+                } else if (gameType === 'distraction_alley') {
+                    gameOptions.gameLength = gameLength ? parseInt(gameLength) : 30;
                 }
                 window.initGame(gameOptions, ws, aiCommentary);
             }
