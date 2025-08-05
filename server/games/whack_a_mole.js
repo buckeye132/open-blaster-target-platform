@@ -58,7 +58,7 @@ class WhackAMole extends Game {
             this.activeTarget.off();
         }
         this.broadcast('gameOver', { finalScore: this.score });
-        this.emit('gameOver');
+        this.emit('gameOver', this.score);
     }
 
     pickAndActivateTarget() {
@@ -71,7 +71,7 @@ class WhackAMole extends Game {
         this.activeTarget.activate(this.targetTimeout, 'positive', 'standard', `${this.targetTimeout} SOLID 0 255 0`);
     }
 
-    onHit(target, { value }) {
+    handleHit(target, { value }) {
         if (target === this.activeTarget) {
             this.score++;
             this.broadcast('updateScore', { score: this.score });
@@ -79,7 +79,7 @@ class WhackAMole extends Game {
         }
     }
 
-    onExpired(target, value) {
+    handleExpired(target, value) {
         if (target === this.activeTarget) {
             this.pickAndActivateTarget();
         }

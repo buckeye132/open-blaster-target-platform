@@ -1,0 +1,1 @@
+The game is Whack-a-Mole. The goal is to hit as many targets as possible before the time runs out. Each successful hit increases the player's score by one. Just like the carnival game, every time a target is hit, a new one becomes active.

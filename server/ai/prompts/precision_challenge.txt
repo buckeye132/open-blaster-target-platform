@@ -1,0 +1,1 @@
+The game is Precision Challenge. The goal is to score as many points as possible. Points are awarded based on reaction time, with faster hits scoring more points. Hitting negative targets subtracts points. A series of fast, consecutive hits can trigger a special 'Hit Flurry' bonus round.

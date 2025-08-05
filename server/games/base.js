@@ -89,23 +89,47 @@ class Game extends EventEmitter {
         throw new Error("Game.stop() must be implemented by a subclass");
     }
 
-    /**
-     * Handles a 'HIT' message from a target.
+        /**
+     * Handles a 'HIT' message from a target. This is the final method.
+     * It emits the 'hit' event for global listeners and then calls the
+     * overridable handleHit method for subclass-specific logic.
      * @param {Target} target The target that was hit.
-     * @param {string} value The value associated with the hit.
+     * @param {object} value The value associated with the hit.
      */
     onHit(target, value) {
-        // Optional: can be implemented by subclass
+        this.emit('hit', target, value);
+        this.handleHit(target, value);
     }
 
     /**
-     * Handles an 'EXPIRED' message from a target.
+     * Handles an 'EXPIRED' message from a target. This is the final method.
+     * It emits the 'miss' event for global listeners and then calls the
+     * overridable handleExpired method for subclass-specific logic.
      * @param {Target} target The target that timed out.
      * @param {string} value The value associated with the expiration.
      */
     onExpired(target, value) {
-        // Optional: can be implemented by subclass
+        this.emit('miss', target, value);
+        this.handleExpired(target, value);
     }
+
+    /**
+     * Overridable method for subclass-specific hit logic.
+     * @param {Target} target The target that was hit.
+     * @param {object} value The value associated with the hit.
+     */
+    handleHit(target, value) {
+        // Meant to be overridden by subclasses
+    }
+
+    /**
+     * Overridable method for subclass-specific expiration logic.
+     * @param {Target} target The target that timed out.
+     * @param {string} value The value associated with the expiration.
+     */
+    handleExpired(target, value) {
+        // Meant to be overridden by subclasses
+    }""
 
     /**
      * Broadcasts a message to all connected web clients.

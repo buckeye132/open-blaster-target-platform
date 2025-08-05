@@ -1,15 +1,11 @@
-let ws;
 let gameStatusEl;
 let scoreboardEl;
 
-window.initGame = (options) => {
+window.initGame = (options, ws, aiCommentary) => {
     gameStatusEl = document.getElementById('game-status');
     scoreboardEl = document.getElementById('scoreboard');
 
-    ws = new WebSocket('ws://' + window.location.host);
-
-    ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
+    window.handleGameMessage = (data) => {
         const { type, payload } = data;
 
         switch (type) {
@@ -36,18 +32,12 @@ window.initGame = (options) => {
                 // The server now handles all game logic, so we don't need to do anything here.
                 break;
             default:
-                console.log('Unknown message type:', type);
+                // Not all messages are for this game, so it's safe to ignore them.
+                break;
         }
     };
 
-    ws.onopen = () => {
-        console.log('Connected to server.');
-        ws.send(JSON.stringify({ command: 'start-game', gameMode: 'demo' }));
-    };
-
-    ws.onclose = () => {
-        updateStatus('Connection to server lost. Please return to the lobby.');
-    };
+    ws.send(JSON.stringify({ command: 'start-game', gameMode: 'demo', aiCommentary: aiCommentary }));
 };
 
 function updateStatus(message) {

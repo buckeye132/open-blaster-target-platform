@@ -1,0 +1,1 @@
+This is a demonstration mode that cycles through various target animations and hit sequences. There is no score.

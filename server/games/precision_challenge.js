@@ -51,6 +51,7 @@ class PrecisionChallenge extends Game {
         });
         this.activeTargets.clear();
         this.broadcast('gameOver', { finalScore: this.score });
+        this.emit('gameOver', this.score);
     }
 
     tick() {
@@ -58,6 +59,7 @@ class PrecisionChallenge extends Game {
 
         this.timeLeft--;
         this.broadcast('updateTimer', { timeLeft: this.timeLeft });
+        this.emit('timeUpdate', this.timeLeft);
 
         if (this.timeLeft <= 0) {
             this.stop();
@@ -83,7 +85,7 @@ class PrecisionChallenge extends Game {
         this.activeTargets.set(target, { value, activationTime: Date.now() });
     }
 
-    onHit(target, { reactionTime, value }) {
+    handleHit(target, { reactionTime, value }) {
         if (!this.activeTargets.has(target)) return;
 
         if (this.hitFlurryActive) {
@@ -114,7 +116,7 @@ class PrecisionChallenge extends Game {
         this.broadcast('updateScore', { score: this.score });
     }
 
-    onExpired(target, value) {
+    handleExpired(target, value) {
         if (!this.activeTargets.has(target)) return;
 
         if (this.hitFlurryActive) return;

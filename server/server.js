@@ -22,6 +22,9 @@ const WebSocket = require('ws');
 const fs = require('fs');
 const path = require('path');
 const { URL } = require('url');
+require('dotenv').config();
+
+
 
 // Import custom classes
 const Target = require('./target');
@@ -38,6 +41,20 @@ const TCP_PORT = 8888;
 let connectedTargets = new Map(); // Use a Map to store targets by their ID
 let webClients = new Set();
 let activeGame = null;
+let isCommentatorActiveForCurrentGame = false;
+
+// --- AI Commentator Setup ---
+let commentator = null;
+if (process.env.GEMINI_API_KEY) {
+    try {
+        const Commentator = require('./ai/commentator');
+        commentator = new Commentator();
+        console.log('LOG: AI Commentator enabled.');
+    } catch (error) {
+        console.error('ERROR: Failed to load AI Commentator. Is @google/generative-ai installed?', error);
+        commentator = null;
+    }
+}
 
 // --- Game Registry ---
 const gameModes = {
@@ -177,7 +194,7 @@ wss.on('connection', (ws) => {
 
     ws.on('message', (message) => {
         const data = JSON.parse(message.toString());
-        handleWebMessage(data);
+        handleWebMessage(ws, data);
     });
 
     ws.on('close', () => {
@@ -186,8 +203,9 @@ wss.on('connection', (ws) => {
     });
 });
 
-function handleWebMessage(data) {
+function handleWebMessage(ws, data) {
     if (data.command === 'start-game') {
+        console.log("server.js: Received start-game command with data:", data);
         if (activeGame) {
             console.log("WARN: A game is already in progress.");
             return;
@@ -196,12 +214,40 @@ function handleWebMessage(data) {
         if (GameClass) {
             const targets = Array.from(connectedTargets.values());
             activeGame = new GameClass(webClients, targets, data.options || {});
+
+            const aiCommentaryEnabled = data.aiCommentary === 'true'; // Parse the boolean from the string
+            console.log(`server.js: Received aiCommentary: ${data.aiCommentary}, parsed as ${aiCommentaryEnabled}`);
+            console.log(`AI com: ${aiCommentaryEnabled}`);
+
+            if (commentator && aiCommentaryEnabled) {
+              console.log("AI ACTIVE");
+                isCommentatorActiveForCurrentGame = true;
+                activeGame.on('hit', (target, hitData) => commentator.onHit(hitData));
+                activeGame.on('miss', () => commentator.onMiss());
+                activeGame.on('timeUpdate', (timeLeft) => commentator.onTimeUpdate(timeLeft));
+                activeGame.on('gameOver', (finalScore) => commentator.onGameOver(finalScore));
+                commentator.start(data.gameMode, data.options || {});
+            } else {
+              console.log("AI NOT ACTIVE");
+                isCommentatorActiveForCurrentGame = false;
+            }
             activeGame.setupAndStart(); // This now handles the entire setup and game start
 
             // Listen for the game to end to clean up
-            activeGame.on('gameOver', () => {
-                console.log("LOG: Game has ended.");
-                activeGame = null;
+            activeGame.on('gameOver', (finalScore) => {
+                console.log("LOG: Game has ended. Waiting for commentator to finish.");
+                if (commentator && isCommentatorActiveForCurrentGame) {
+                    // Wait for the commentator to signal it's done before cleaning up.
+                    commentator.once('commentaryComplete', () => {
+                        console.log("LOG: Commentator finished. Cleaning up game.");
+                        activeGame = null;
+                        isCommentatorActiveForCurrentGame = false; // Reset the flag
+                    });
+                } else {
+                    // If no commentator, clean up immediately.
+                    activeGame = null;
+                    isCommentatorActiveForCurrentGame = false; // Reset the flag
+                }
             });
         } else {
             console.log(`WARN: Unknown game mode: ${data.gameMode}`);
@@ -296,6 +342,8 @@ function handleWebMessage(data) {
             // For now, we can send the raw command.
             target._sendCommand('STATUS_REQUEST');
         }
+    } else if (data.command === 'check-ai-commentary') {
+        ws.send(JSON.stringify({ type: 'AI_COMMENTARY_STATUS', payload: { available: commentator !== null } }));
     }
     // Handle other commands like ping tests if needed
 }

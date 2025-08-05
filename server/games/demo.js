@@ -112,7 +112,7 @@ class Demo extends Game {
         this.emit('gameOver');
     }
 
-    onHit(target, { value }) {
+    handleHit(target, { value }) {
         if (target !== this.activeTarget) return;
 
         if (this.state === 'single_hit' && value === 'single_hit') {
@@ -124,7 +124,7 @@ class Demo extends Game {
         }
     }
 
-    onExpired(target, value) {
+    handleExpired(target, value) {
         if (target !== this.activeTarget) return;
 
         if (this.state === 'single_hit' && value === 'single_hit') {

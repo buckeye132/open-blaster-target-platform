@@ -56,7 +56,7 @@ class Target extends EventEmitter {
      * @param {string} message - The message string from the target.
      */
     _parseAndEmit(message) {
-        console.log(`< [${this.id}] ${message}`);
+        //console.log(`< [${this.id}] ${message}`);
         if (message.startsWith('HIT')) {
             const parts = message.split(' '); // HIT <reaction_ms> <value>
             const reactionTime = parseInt(parts[1], 10);
@@ -85,7 +85,7 @@ class Target extends EventEmitter {
             console.log(`WARN: Attempted to send command to destroyed socket: ${this.id}`);
             return;
         }
-        console.log(`> [${this.id}] ${command}`);
+        //console.log(`> [${this.id}] ${command}`);
         this.socket.write(`${command}\n`);
     }
 

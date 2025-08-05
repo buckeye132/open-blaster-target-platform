@@ -47,30 +47,31 @@ class QuickDraw extends Game {
         }, delay);
     }
 
-    stop() {
+    stop(score = 'N/A') {
         console.log("LOG: Stopping Quick Draw");
         if (this.gameTimeout) {
             clearTimeout(this.gameTimeout);
         }
         // Do not send OFF command, to allow the hit animation to complete.
-        this.emit('gameOver'); // Signal to the server that the game is done
+        this.emit('gameOver', score); // Signal to the server that the game is done
     }
 
     onHit(target, { reactionTime, value }) {
         if (target !== this.activeTarget) return; // Wrong target hit
 
+        const score = `${reactionTime} ms`;
         this.broadcast('gameOver', {
             winner: target.id,
-            score: `${reactionTime} ms`
+            score: score
         });
-        this.stop();
+        this.stop(score);
     }
 
     onExpired(target, value) {
         if (target !== this.activeTarget) return;
 
         this.broadcast('gameOver', { message: 'Missed! You were too slow.' });
-        this.stop();
+        this.stop('Missed');
     }
 }
 

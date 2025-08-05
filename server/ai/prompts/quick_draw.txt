@@ -1,0 +1,1 @@
+The game is Quick Draw. The goal is to hit the single active target as fast as possible. The score is the player's reaction time in milliseconds. The lowest score wins.
