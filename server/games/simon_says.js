@@ -38,7 +38,8 @@ class SimonSays extends Game {
 
         // Configure all targets for the game
         this.targets.forEach(target => {
-            target.configureHit('simon_says_hit', 1, 'NONE', '500 SOLID 0 255 0');
+            // The visual script is now handled by the server in handleHit
+            target.configureHit('simon_says_hit', 1, 'NONE', '0 SOLID 0 0 0');
         });
 
         await this.nextRound();
@@ -77,28 +78,53 @@ class SimonSays extends Game {
 
     activateTargets() {
         this.targets.forEach(target => {
-            target.activate(15000, target.id, 'simon_says_hit', 'SOLID 100 100 100');
+            // The duration for the activate script is a placeholder and is ignored by the firmware.
+            target.activate(15000, target.id, 'simon_says_hit', '0 SOLID 100 100 100');
         });
     }
 
     handleHit(target, value) {
+        // turn off all targets immediately to avoid extra hits
+        this.targets.forEach(t => t.off());
+
+        // save the player's selection
         this.playerSequence.push(target);
         const correctTarget = this.sequence[this.playerSequence.length - 1];
 
         if (target !== correctTarget) {
+            this.targets.forEach(t => t.display(1, '1000 ANIM THEATER_CHASE 255 0 0'));
             this.broadcast('gameOver', { message: `Wrong hit! You made it to round ${this.round}.` });
-            this.stop();
-        } else if (this.playerSequence.length === this.sequence.length) {
-            // Round complete
-            this.round++;
-            this.targets.forEach(t => t.off()); // Turn off all targets before next round
-            this.gameTimeout = setTimeout(() => this.nextRound(), 1000);
+            // stop after animation completes
+            this.gameTimeout = setTimeout(() => this.stop(), 1000);
+        } else {
+            // Correct hit.
+            if (this.playerSequence.length === this.sequence.length) {
+                // Round complete, play a final success animation on the last target.
+                this.targets.forEach(t => t.display(1, '1000 ANIM THEATER_CHASE 0 255 0'));
+                this.round++;
+                this.broadcast('gameUpdate', { message: 'Good job! Next round...' });
+                this.gameTimeout = setTimeout(() => this.nextRound(), 1500);
+            } else {
+                // Sequence is not over. Flash the target green to give feedback,
+                // then immediately reactivate it for the next potential hit.
+                target.display(1, '250 SOLID 0 255 0');
+
+                setTimeout(() => {
+                    this.activateTargets();
+                }, 750); // This timeout should match the display duration.
+            }
         }
     }
 
     handleExpired(target, value) {
         this.broadcast('gameOver', { message: `Too slow! You made it to round ${this.round}.` });
         this.stop();
+    }
+
+    allTargetsOff() {
+        this.targets.forEach(target => {
+            target.off();
+        });
     }
 }
 
