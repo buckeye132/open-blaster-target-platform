@@ -18,11 +18,12 @@
 const Game = require('./base');
 
 class SimonSays extends Game {
-    constructor(clients, targets) {
+    constructor(clients, targets, options) {
         super(clients, targets);
         this.sequence = [];
         this.playerSequence = [];
         this.round = 1;
+        this.gameLength = (options.gameLength || 60) * 1000; // Default to 60 seconds
         this.gameTimeout = null;
     }
 
@@ -43,6 +44,12 @@ class SimonSays extends Game {
         });
 
         await this.nextRound();
+
+        // Set a timeout to end the game
+        this.gameTimeout = setTimeout(() => {
+            this.broadcast('gameOver', { message: `Time's up! You made it to round ${this.round}.` });
+            this.stop();
+        }, this.gameLength);
     }
 
     stop() {
