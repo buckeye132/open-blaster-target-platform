@@ -4,7 +4,7 @@ let scoreEl;
 
 window.initGame = (options, ws, aiCommentary) => {
     gameStatusEl = document.getElementById('game-status');
-    scoreEl = document.getElementById('score'); // Assuming an element with id 'score' exists
+    scoreEl = document.getElementById('scoreboard');
 
     window.handleGameMessage = (data) => {
         const { type, payload } = data;
@@ -46,6 +46,6 @@ function updateStatus(message) {
 
 function updateScore(score) {
     if (scoreEl) {
-        scoreEl.innerHTML = score;
+        scoreEl.innerHTML = `<h2>${score}</h2>`;
     }
 }
