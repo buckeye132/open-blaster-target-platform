@@ -4,12 +4,16 @@
   "description": "A Node.js server to test and debug ESP32 Nerf targets.",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "speaker": "^0.5.5",
     "ws": "^8.17.1"
+  },
+  "devDependencies": {
+    "jest": "^30.0.5"
   }
 }
