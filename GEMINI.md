@@ -39,6 +39,33 @@ Finally, add your new game mode to the lobby so that it can be selected by the u
 - **Edit `server/assets/lobby.js`:**
     - **Handle Game Settings:** If your game has custom settings, you'll need to add logic to the `gameModeSelect` event listener to show/hide the settings UI.
 
+## Server-Side Unit Testing
+
+To ensure the stability and quality of the game logic, all server-side code must be accompanied by unit tests. This is not optional.
+
+### Mandatory Testing Policy
+
+1.  **New Logic Requires New Tests:** All new features, game modes, or bug fixes in the `server/` directory **MUST** include corresponding unit tests.
+2.  **All Tests Must Pass:** Before submitting any changes, you **MUST** run the entire test suite and ensure that all tests pass. No work is considered complete until it is covered by passing tests.
+
+### How to Write Tests
+
+We use the [Jest](https://jestjs.io/) framework for testing. Tests are located in the `server/test/` directory.
+
+-   **Test File Naming:** Test files should be named `[name_of_file_to_test].test.js`.
+-   **`StubTarget`:** To test game logic in isolation, use the `StubTarget` class from `server/test/stub_target.js`. This provides a deterministic, in-memory mock of a real target.
+    -   **Queuing Events:** Use `stub.queueHit(reactionTime, value)` or `stub.queueMiss(value)` to pre-program how the stub should respond when activated.
+    -   **Verifying Behavior:** Use `stub.getEventLog()` to retrieve a serialized log of all commands sent to the stub. You can then use Jest's `expect` assertions to verify the game logic behaved as expected.
+-   **Fake Timers:** Use `jest.useFakeTimers()` at the top of your test file to mock `setTimeout` and other timer functions. This allows your tests to run instantly. Use `jest.runAllTimers()` to advance time and execute pending timers.
+
+### Running Tests
+
+To run all server-side unit tests, execute the following command from the project root:
+
+```bash
+npm test --prefix server
+```
+
 ## Working on a Roadmap Feature
 
 When working on a feature from the [roadmap](docs/roadmap.md), please follow these steps:
