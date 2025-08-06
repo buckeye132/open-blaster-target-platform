@@ -71,6 +71,13 @@ All commit messages should follow the [Conventional Commits](https://www.convent
 
 When developing new game modes, please adhere to the following best practices to ensure consistency, robustness, and a high-quality user experience.
 
+### WebSocket Communication
+
+**All new client-server communication over WebSockets MUST adhere to the defined protocol.** Manual or one-off message formats are not permitted. All message types and their structures MUST be defined in `server/assets/protocol.mjs`.
+
+- **Protocol Documentation:** For a complete overview of the WebSocket protocol, including message types and payload structures, please consult the [WebSocket Protocol Documentation](docs/websocket-protocol.md).
+- **Using the Protocol:** The `Message` class in `protocol.mjs` provides builder methods for creating all valid messages. Use these builders to ensure your messages are compliant.
+
 ### Always Define Game Length
 
 All games should have a finite duration. This prevents games from running indefinitely and provides a clear end-point for the player.
