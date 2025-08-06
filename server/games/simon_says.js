@@ -23,7 +23,6 @@ class SimonSays extends Game {
         this.sequence = [];
         this.playerSequence = [];
         this.round = 1;
-        this.gameLength = (options.gameLength || 60) * 1000; // Default to 60 seconds
         this.gameTimeout = null;
     }
 
@@ -44,12 +43,6 @@ class SimonSays extends Game {
         });
 
         await this.nextRound();
-
-        // Set a timeout to end the game
-        this.gameTimeout = setTimeout(() => {
-            this.broadcast('gameOver', { message: `Time's up! You made it to round ${this.round}.` });
-            this.stop();
-        }, this.gameLength);
     }
 
     stop() {
@@ -102,7 +95,7 @@ class SimonSays extends Game {
             this.targets.forEach(t => t.display(1, '1000 ANIM THEATER_CHASE 255 0 0'));
             this.broadcast('gameOver', { message: `Wrong hit! You made it to round ${this.round}.` });
             // stop after animation completes
-            this.gameTimeout = setTimeout(() => this.stop(), 1000);
+            setTimeout(() => this.stop(), 1000);
         } else {
             // Correct hit.
             if (this.playerSequence.length === this.sequence.length) {
@@ -110,7 +103,7 @@ class SimonSays extends Game {
                 this.targets.forEach(t => t.display(1, '1000 ANIM THEATER_CHASE 0 255 0'));
                 this.round++;
                 this.broadcast('gameUpdate', { message: 'Good job! Next round...' });
-                this.gameTimeout = setTimeout(() => this.nextRound(), 1500);
+                setTimeout(() => this.nextRound(), 1500);
             } else {
                 // Sequence is not over. Flash the target green to give feedback,
                 // then immediately reactivate it for the next potential hit.
@@ -118,7 +111,7 @@ class SimonSays extends Game {
 
                 setTimeout(() => {
                     this.activateTargets();
-                }, 750); // This timeout should match the display duration.
+                }, 250); // This timeout should match the display duration.
             }
         }
     }

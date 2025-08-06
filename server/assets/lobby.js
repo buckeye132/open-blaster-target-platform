@@ -76,8 +76,7 @@ const wamGameLengthInput = document.getElementById('wam-game-length');
 const wamTargetTimeoutInput = document.getElementById('wam-target-timeout');
 const precisionChallengeSettings = document.getElementById('precision-challenge-settings');
 const pcGameLengthInput = document.getElementById('pc-game-length');
-const simonSaysSettings = document.getElementById('simon-says-settings');
-const ssGameLengthInput = document.getElementById('ss-game-length');
+
 const distractionAlleySettings = document.getElementById('distraction-alley-settings');
 const daGameLengthInput = document.getElementById('da-game-length');
 const teamColorsSettings = document.getElementById('team-colors-settings');
@@ -145,8 +144,6 @@ gameModeSelect.addEventListener('change', () => {
         whackAMoleSettings.style.display = 'block';
     } else if (gameModeSelect.value === 'precision_challenge') {
         precisionChallengeSettings.style.display = 'block';
-    } else if (gameModeSelect.value === 'simon_says') {
-        simonSaysSettings.style.display = 'block';
     } else if (gameModeSelect.value === 'distraction_alley') {
         distractionAlleySettings.style.display = 'block';
     } else if (gameModeSelect.value === 'team_colors') {
@@ -173,9 +170,6 @@ startGameButton.addEventListener('click', () => {
         url += `&gameLength=${gameLength}&targetTimeout=${targetTimeout}`;
     } else if (selectedGame === 'precision_challenge') {
         const gameLength = pcGameLengthInput.value;
-        url += `&gameLength=${gameLength}`;
-    } else if (selectedGame === 'simon_says') {
-        const gameLength = ssGameLengthInput.value;
         url += `&gameLength=${gameLength}`;
     } else if (selectedGame === 'distraction_alley') {
         const gameLength = daGameLengthInput.value;
