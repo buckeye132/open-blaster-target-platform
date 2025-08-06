@@ -14,14 +14,15 @@
  * limitations under the License.
  */
 
+import { Message, MessageType } from './protocol.mjs';
+
 const ws = new WebSocket('ws://' + window.location.host);
 const targetGrid = document.getElementById('target-grid');
 
 let targets = {}; // Store target state
 
-function sendCommandToServer(targetId, command) {
-  ws.send(JSON.stringify({ targetId, command }));
-  console.log(`> [${targetId}] ${command}`);
+function sendCommandToServer(message) {
+  ws.send(JSON.stringify(message));
 }
 
 function renderTargetCard(targetId) {
@@ -55,17 +56,17 @@ function updateTargetStatus(targetId, message, type = 'info') {
 }
 
 window.calibrateTarget = (targetId) => {
-    sendCommandToServer(targetId, 'calibrate-piezo');
+    sendCommandToServer(Message.targetCommand(targetId, 'calibrate-piezo'));
     updateTargetStatus(targetId, 'Calibrating...');
 };
 
 window.testLeds = (targetId) => {
-    sendCommandToServer(targetId, 'test-leds');
+    sendCommandToServer(Message.targetCommand(targetId, 'test-leds'));
     updateTargetStatus(targetId, 'LEDs Tested');
 };
 
 window.testHit = (targetId) => {
-    sendCommandToServer(targetId, 'test-hit');
+    sendCommandToServer(Message.targetCommand(targetId, 'test-hit'));
     updateTargetStatus(targetId, 'Waiting for hit...');
 };
 
@@ -86,51 +87,56 @@ const enableAiCommentaryCheckbox = document.getElementById('enable-ai-commentary
 
 // Initial message to server to check AI commentary availability
 ws.onopen = () => {
-    ws.send(JSON.stringify({ command: 'check-ai-commentary' }));
+    ws.send(JSON.stringify(Message.getAiAvailability()));
 };
 
 ws.onmessage = (event) => {
     const data = JSON.parse(event.data);
+    const { type, payload } = data;
 
-    if (data.type === 'AI_COMMENTARY_STATUS') {
-        if (data.payload.available) {
-            aiCommentaryOption.style.display = 'block';
-        } else {
-            aiCommentaryOption.style.display = 'none';
-        }
-    } else if (data.type === 'TARGET_LIST') {
-        const onlineTargets = new Set(data.payload);
-
-        // Add new targets
-        for (const targetId of onlineTargets) {
-            if (!targets[targetId]) {
-                targets[targetId] = { online: true };
-            }
-            targets[targetId].online = true;
-            renderTargetCard(targetId);
-        }
-
-        // Mark disconnected targets as offline
-        for (const targetId in targets) {
-            if (!onlineTargets.has(targetId)) {
-                targets[targetId].online = false;
-            }
-            renderTargetCard(targetId);
-        }
-    } else if (data.type === 'LOG_MESSAGE') {
-        const { from, message } = data.payload;
-        if (message.startsWith('HIT')) {
-            updateTargetStatus(from, 'HIT Detected!', 'hit');
-        } else if (message.startsWith('EXPIRED')) {
-            updateTargetStatus(from, 'Hit Test EXPIRED', 'expired');
-        } else if (message.includes('Auto-calibration complete')) {
-            const thresholdMatch = message.match(/New threshold: (\d+)/);
-            if (thresholdMatch && thresholdMatch[1]) {
-                updateTargetStatus(from, `Calibrated! Threshold: ${thresholdMatch[1]}`, 'hit');
+    switch (type) {
+        case MessageType.S2C_AI_AVAILABILITY:
+            if (payload.available) {
+                aiCommentaryOption.style.display = 'block';
             } else {
-                updateTargetStatus(from, 'Calibration Finished', 'hit');
+                aiCommentaryOption.style.display = 'none';
             }
-        }
+            break;
+        case MessageType.S2C_TARGET_LIST_UPDATE:
+            const onlineTargets = new Set(payload.targetList);
+
+            // Add new targets
+            for (const targetId of onlineTargets) {
+                if (!targets[targetId]) {
+                    targets[targetId] = { online: true };
+                }
+                targets[targetId].online = true;
+                renderTargetCard(targetId);
+            }
+
+            // Mark disconnected targets as offline
+            for (const targetId in targets) {
+                if (!onlineTargets.has(targetId)) {
+                    targets[targetId].online = false;
+                }
+                renderTargetCard(targetId);
+            }
+            break;
+        case MessageType.S2C_TARGET_LOG_MESSAGE:
+            const { from, message } = payload;
+            if (message.startsWith('HIT')) {
+                updateTargetStatus(from, 'HIT Detected!', 'hit');
+            } else if (message.startsWith('EXPIRED')) {
+                updateTargetStatus(from, 'Hit Test EXPIRED', 'expired');
+            } else if (message.includes('Auto-calibration complete')) {
+                const thresholdMatch = message.match(/New threshold: (\d+)/);
+                if (thresholdMatch && thresholdMatch[1]) {
+                    updateTargetStatus(from, `Calibrated! Threshold: ${thresholdMatch[1]}`, 'hit');
+                } else {
+                    updateTargetStatus(from, 'Calibration Finished', 'hit');
+                }
+            }
+            break;
     }
 };
 
@@ -155,30 +161,22 @@ gameModeSelect.addEventListener('change', () => {
 
 startGameButton.addEventListener('click', () => {
     const selectedGame = gameModeSelect.value;
-    let url = `/game?game=${selectedGame}`;
-
-    // Add AI commentary preference
-    if (aiCommentaryOption.style.display === 'block' && enableAiCommentaryCheckbox.checked) {
-        url += `&aiCommentary=true`;
-    } else {
-        url += `&aiCommentary=false`;
-    }
+    const aiCommentary = aiCommentaryOption.style.display === 'block' && enableAiCommentaryCheckbox.checked;
+    let options = {};
 
     if (selectedGame === 'whack_a_mole') {
-        const gameLength = wamGameLengthInput.value;
-        const targetTimeout = wamTargetTimeoutInput.value;
-        url += `&gameLength=${gameLength}&targetTimeout=${targetTimeout}`;
+        options.gameLength = wamGameLengthInput.value;
+        options.targetTimeout = wamTargetTimeoutInput.value;
     } else if (selectedGame === 'precision_challenge') {
-        const gameLength = pcGameLengthInput.value;
-        url += `&gameLength=${gameLength}`;
+        options.gameLength = pcGameLengthInput.value;
     } else if (selectedGame === 'distraction_alley') {
-        const gameLength = daGameLengthInput.value;
-        url += `&gameLength=${gameLength}`;
+        options.gameLength = daGameLengthInput.value;
     } else if (selectedGame === 'team_colors') {
-        const gameLength = tcGameLengthInput.value;
-        url += `&gameLength=${gameLength}`;
+        options.gameLength = tcGameLengthInput.value;
     }
-    window.location.href = url;
+
+    ws.send(JSON.stringify(Message.startGame(selectedGame, options, aiCommentary)));
+    window.location.href = `/game?game=${selectedGame}`;
 });
 
 // Initial check for settings display

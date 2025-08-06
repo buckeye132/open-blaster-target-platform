@@ -16,46 +16,35 @@ window.initGame = (options, ws, aiCommentary) => {
 
     // The main WebSocket message handler is in game.js
     // This function will be called by game.js with game-specific messages
-    window.handleGameMessage = (data) => {
-        const { type, payload } = data;
+    window.handleGameMessage = (payload) => {
+        const { updateType, ...updatePayload } = payload;
 
-        switch (type) {
+        switch (updateType) {
             case 'gameSetup':
-                updateStatus(payload.message);
+                updateStatus(updatePayload.message);
                 break;
             case 'countdown':
-                countdownEl.innerText = payload.count;
+                countdownEl.innerText = updatePayload.count;
                 break;
             case 'gameStart':
                 countdownEl.innerText = 'Go!';
                 setTimeout(() => { countdownEl.innerText = ''; }, 500);
-                updateStatus(payload.message);
+                updateStatus(updatePayload.message);
                 score = 0;
                 updateScoreboard();
                 break;
             case 'updateScore':
-                score = payload.score;
+                score = updatePayload.score;
                 updateScoreboard();
                 break;
             case 'gameOver':
-                updateStatus(`Game Over! Final Score: ${payload.finalScore}`);
-                break;
-            default:
-                // Not all messages are for this game, so it's safe to ignore them.
+                updateStatus(`Game Over! Final Score: ${updatePayload.finalScore}`);
                 break;
         }
     };
 
     // Send the start-game command via the main WebSocket connection
-    ws.send(JSON.stringify({
-        command: 'start-game',
-        gameMode: 'whack_a_mole',
-        options: {
-            gameLength: options.gameLength * 1000,
-            targetTimeout: options.targetTimeout
-        },
-        aiCommentary: aiCommentary
-    }));
+    // The game is started by game.mjs, which sends the C2S_START_GAME message.
 };
 
 function updateStatus(message) {

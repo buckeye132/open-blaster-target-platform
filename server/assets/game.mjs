@@ -1,30 +1,48 @@
 // game.js
+import { Message, MessageType } from './protocol.mjs';
+
 document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
     const gameType = urlParams.get('game');
     const gameLength = urlParams.get('gameLength');
     const targetTimeout = urlParams.get('targetTimeout');
-    const aiCommentary = urlParams.get('aiCommentary'); // Get AI commentary preference
-    console.log(`game.js: aiCommentary from URL: ${aiCommentary}`);
+    const aiCommentary = urlParams.get('aiCommentary') === 'true';
 
     const gameTitleElement = document.getElementById('game-title');
-    const gameSpecificContentElement = document.getElementById('game-specific-content');
     const stopGameButton = document.getElementById('stop-game-button');
 
-    // Establish WebSocket connection
     const ws = new WebSocket(`ws://${window.location.host}`);
     ws.binaryType = 'arraybuffer';
+
+    ws.onopen = () => {
+        const options = {};
+        if (gameType === 'whack_a_mole') {
+            options.gameLength = gameLength ? parseInt(gameLength) : 15;
+            options.targetTimeout = targetTimeout ? parseInt(targetTimeout) : 1000;
+        } else if (gameType === 'precision_challenge') {
+            options.gameLength = gameLength ? parseInt(gameLength) : 30;
+        } else if (gameType === 'distraction_alley') {
+            options.gameLength = gameLength ? parseInt(gameLength) : 30;
+        } else if (gameType === 'team_colors') {
+            options.gameLength = gameLength ? parseInt(gameLength) : 30;
+        }
+        ws.send(JSON.stringify(Message.startGame(gameType, options, aiCommentary)));
+    };
 
     ws.onmessage = (event) => {
         try {
             if (event.data instanceof ArrayBuffer) {
                 // TODO: implement audio commentary playback
             } else if (window.handleGameMessage) {
-                // It's a regular game message, pass it to the game-specific handler.
                 const data = JSON.parse(event.data);
-                window.handleGameMessage(data);
+                if (data.type === MessageType.S2C_GAME_UPDATE || data.type === MessageType.S2C_GAME_START || data.type === MessageType.S2C_GAME_OVER) {
+                    // Pass the inner payload to the game-specific handler
+                    window.handleGameMessage(data.payload);
+                } else {
+                    // For other message types, pass the whole message
+                    window.handleGameMessage(data);
+                }
             }
-
         } catch (e) {
             console.error("Failed to parse message:", e, event.data);
         }
@@ -32,8 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     stopGameButton.addEventListener('click', () => {
         if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ command: 'stop-game' }));
-            console.log('Sent stop-game command');
+            ws.send(JSON.stringify(Message.stopGame()));
         } else {
             console.warn('WebSocket not open. Cannot send stop-game command.');
         }
@@ -41,12 +58,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (gameType) {
         gameTitleElement.textContent = gameType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-
-        // Load the specific game script
         const script = document.createElement('script');
         script.src = `${gameType}.js`;
         script.onload = () => {
-            // Initialize the game if it has an init function
             if (typeof window.initGame === 'function') {
                 const gameOptions = {};
                 if (gameType === 'whack_a_mole') {

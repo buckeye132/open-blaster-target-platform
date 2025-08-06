@@ -14,35 +14,33 @@ window.initGame = (options, ws, aiCommentary) => {
     scoreEl = document.getElementById('scoreboard');
 
 
-    window.handleGameMessage = (data) => {
-        const { type, payload } = data;
+    window.handleGameMessage = (payload) => {
+        const { updateType, ...updatePayload } = payload;
 
-        switch (type) {
+        switch (updateType) {
             case 'gameSetup':
-                updateStatus(payload.message);
+                updateStatus(updatePayload.message);
                 break;
             case 'countdown':
-                updateStatus(`Get Ready... ${payload.count}`);
+                updateStatus(`Get Ready... ${updatePayload.count}`);
                 break;
             case 'gameStart':
-                updateStatus(payload.message);
+                updateStatus(updatePayload.message);
                 updateScore(0);
                 break;
             case 'updateScore':
-                updateScore(payload.score);
+                updateScore(updatePayload.score);
                 break;
             case 'updateTimer':
-                updateTimer(payload.timeLeft);
+                updateTimer(updatePayload.timeLeft);
                 break;
             case 'gameOver':
-                updateStatus(payload.message || 'Game Over!');
-                break;
-            default:
+                updateStatus(updatePayload.message || 'Game Over!');
                 break;
         }
     };
 
-    ws.send(JSON.stringify({ command: 'start-game', gameMode: 'distraction_alley', options: options, aiCommentary: aiCommentary }));
+    // The game is started by game.mjs, which sends the C2S_START_GAME message.
 };
 
 function updateStatus(message) {

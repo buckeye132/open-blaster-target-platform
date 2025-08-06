@@ -5,39 +5,33 @@ window.initGame = (options, ws, aiCommentary) => {
     gameStatusEl = document.getElementById('game-status');
     scoreboardEl = document.getElementById('scoreboard');
 
-    window.handleGameMessage = (data) => {
-        const { type, payload } = data;
+    window.handleGameMessage = (payload) => {
+        const { updateType, ...updatePayload } = payload;
 
-        switch (type) {
+        switch (updateType) {
             case 'gameSetup':
-                updateStatus(payload.message);
+                updateStatus(updatePayload.message);
                 break;
             case 'countdown':
-                updateStatus(`Get Ready... ${payload.count}`);
+                updateStatus(`Get Ready... ${updatePayload.count}`);
                 break;
             case 'gameStart':
-                updateStatus(payload.message);
+                updateStatus(updatePayload.message);
                 updateScoreboard(); // Clear the scoreboard
                 break;
             case 'gameUpdate':
-                updateStatus(payload.message);
+                updateStatus(updatePayload.message);
                 break;
             case 'gameOver':
-                updateStatus(payload.message || 'Game Over!');
-                if (payload.winner) {
-                    updateScoreboard(payload.winner, payload.score);
+                updateStatus(updatePayload.message || 'Game Over!');
+                if (updatePayload.winner) {
+                    updateScoreboard(updatePayload.winner, updatePayload.score);
                 }
-                break;
-            case 'TARGET_LIST':
-                // The server now handles all game logic, so we don't need to do anything here.
-                break;
-            default:
-                // Not all messages are for this game, so it's safe to ignore them.
                 break;
         }
     };
 
-    ws.send(JSON.stringify({ command: 'start-game', gameMode: 'demo', aiCommentary: aiCommentary }));
+    // The game is started by game.mjs, which sends the C2S_START_GAME message.
 };
 
 function updateStatus(message) {

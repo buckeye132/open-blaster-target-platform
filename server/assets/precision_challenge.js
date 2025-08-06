@@ -20,19 +20,21 @@ window.initGame = (options, ws, aiCommentary) => {
     scoreDisplay = document.getElementById('score');
     messageDisplay = document.getElementById('message');
 
-    window.handleGameMessage = (message) => {
-        switch (message.type) {
+    window.handleGameMessage = (payload) => {
+        const { updateType, ...updatePayload } = payload;
+
+        switch (updateType) {
             case 'gameStart':
-                timeLeft = message.payload.timeLeft;
+                timeLeft = updatePayload.timeLeft;
                 score = 0;
                 messageDisplay.textContent = "Game On!";
                 gameTimerInterval = setInterval(updateTimer, 1000);
                 break;
             case 'updateScore':
-                updateScore(message.payload.score);
+                updateScore(updatePayload.score);
                 break;
             case 'updateTimer':
-                timeLeft = message.payload.timeLeft;
+                timeLeft = updatePayload.timeLeft;
                 timerDisplay.textContent = `Time: ${timeLeft}`;
                 break;
             case 'hitFlurryStart':
@@ -45,12 +47,12 @@ window.initGame = (options, ws, aiCommentary) => {
                 break;
             case 'gameOver':
                 clearInterval(gameTimerInterval);
-                messageDisplay.textContent = `Game Over! Final Score: ${message.payload.finalScore}`;
+                messageDisplay.textContent = `Game Over! Final Score: ${updatePayload.finalScore}`;
                 break;
         }
     };
 
-    ws.send(JSON.stringify({ command: 'start-game', gameMode: 'precision_challenge', options: options, aiCommentary: aiCommentary }));
+    // The game is started by game.mjs, which sends the C2S_START_GAME message.
 };
 
 function updateScore(newScore) {

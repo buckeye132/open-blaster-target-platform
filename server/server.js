@@ -27,7 +27,12 @@ require('dotenv').config();
 
 
 // Import custom classes
-const { Target } = require('./target');
+const { Target, VisualScriptBuilder, Animations } = require('./target');
+let Message, MessageType;
+import('./assets/protocol.mjs').then(protocol => {
+    Message = protocol.Message;
+    MessageType = protocol.MessageType;
+});
 const PrecisionChallenge = require('./games/precision_challenge');
 const WhackAMole = require('./games/whack_a_mole');
 const QuickDraw = require('./games/quick_draw');
@@ -71,16 +76,16 @@ const gameModes = {
 };
 
 // --- Helper Functions ---
-function broadcastToWeb(type, payload) {
-    const message = JSON.stringify({ type, payload });
+function broadcastToWeb(message) {
+    const jsonMessage = JSON.stringify(message);
     for (const client of webClients) {
-        client.send(message);
+        client.send(jsonMessage);
     }
 }
 
 function broadcastTargetList() {
     const targetList = Array.from(connectedTargets.keys());
-    broadcastToWeb('TARGET_LIST', targetList);
+    broadcastToWeb(Message.targetListUpdate(targetList));
 }
 
 // --- TCP Server (for the ESP32 target) ---
@@ -118,7 +123,7 @@ const tcpServer = net.createServer((socket) => {
     });
 
     target.on('log', (message) => {
-        broadcastToWeb('LOG_MESSAGE', { from: target.id, message });
+        broadcastToWeb(Message.targetLogMessage(target.id, message));
     });
 
     target.on('close', () => {
@@ -168,6 +173,7 @@ const webServer = http.createServer((req, res) => {
     let contentType = 'text/html';
     switch (extname) {
         case '.js':
+        case '.mjs':
             contentType = 'text/javascript';
             break;
         case '.css':
@@ -210,149 +216,103 @@ wss.on('connection', (ws) => {
 });
 
 function handleWebMessage(ws, data) {
-    if (data.command === 'start-game') {
-        console.log("server.js: Received start-game command with data:", data);
-        if (activeGame) {
-            console.log("WARN: A game is already in progress.");
-            return;
+    const { type, payload } = data;
+
+    switch (type) {
+        case MessageType.C2S_START_GAME:
+            handleStartGame(payload);
+            break;
+        case MessageType.C2S_STOP_GAME:
+            handleStopGame();
+            break;
+        case MessageType.C2S_GET_AI_AVAILABILITY:
+            ws.send(JSON.stringify(Message.aiAvailability(commentator !== null)));
+            break;
+        case MessageType.C2S_TARGET_COMMAND:
+            handleTargetCommand(payload);
+            break;
+        default:
+            console.log(`WARN: Unknown message type: ${type}`);
+    }
+}
+
+function handleStartGame(payload) {
+    if (activeGame) {
+        console.log("WARN: A game is already in progress.");
+        return;
+    }
+
+    const { gameMode, options, aiCommentary } = payload;
+    const GameClass = gameModes[gameMode];
+    if (GameClass) {
+        const targets = Array.from(connectedTargets.values());
+        activeGame = new GameClass(webClients, targets, options || {});
+
+        if (commentator && aiCommentary) {
+            isCommentatorActiveForCurrentGame = true;
+            activeGame.on('hit', (target, hitData) => commentator.onHit(hitData));
+            activeGame.on('miss', () => commentator.onMiss());
+            activeGame.on('timeUpdate', (timeLeft) => commentator.onTimeUpdate(timeLeft));
+            activeGame.on('gameOver', (finalScore) => commentator.onGameOver(finalScore));
+            activeGame.on('customEvent', (event) => commentator.onCustomEvent(event));
+            commentator.start(gameMode, options || {});
+        } else {
+            isCommentatorActiveForCurrentGame = false;
         }
-        const GameClass = gameModes[data.gameMode];
-        if (GameClass) {
-            const targets = Array.from(connectedTargets.values());
-            activeGame = new GameClass(webClients, targets, data.options || {});
 
-            const aiCommentaryEnabled = data.aiCommentary === 'true'; // Parse the boolean from the string
-            console.log(`server.js: Received aiCommentary: ${data.aiCommentary}, parsed as ${aiCommentaryEnabled}`);
-            console.log(`AI com: ${aiCommentaryEnabled}`);
+        activeGame.setupAndStart();
 
-            if (commentator && aiCommentaryEnabled) {
-              console.log("AI ACTIVE");
-                isCommentatorActiveForCurrentGame = true;
-                activeGame.on('hit', (target, hitData) => commentator.onHit(hitData));
-                activeGame.on('miss', () => commentator.onMiss());
-                activeGame.on('timeUpdate', (timeLeft) => commentator.onTimeUpdate(timeLeft));
-                activeGame.on('gameOver', (finalScore) => commentator.onGameOver(finalScore));
-                activeGame.on('customEvent', (event) => commentator.onCustomEvent(event));
-                commentator.start(data.gameMode, data.options || {});
+        activeGame.on('gameOver', () => {
+            if (commentator && isCommentatorActiveForCurrentGame) {
+                commentator.once('commentaryComplete', () => {
+                    activeGame = null;
+                    isCommentatorActiveForCurrentGame = false;
+                });
             } else {
-              console.log("AI NOT ACTIVE");
+                activeGame = null;
                 isCommentatorActiveForCurrentGame = false;
             }
-            activeGame.setupAndStart(); // This now handles the entire setup and game start
-
-            // Listen for the game to end to clean up
-            activeGame.on('gameOver', (finalScore) => {
-                console.log("LOG: Game has ended. Waiting for commentator to finish.");
-                if (commentator && isCommentatorActiveForCurrentGame) {
-                    // Wait for the commentator to signal it's done before cleaning up.
-                    commentator.once('commentaryComplete', () => {
-                        console.log("LOG: Commentator finished. Cleaning up game.");
-                        activeGame = null;
-                        isCommentatorActiveForCurrentGame = false; // Reset the flag
-                    });
-                } else {
-                    // If no commentator, clean up immediately.
-                    activeGame = null;
-                    isCommentatorActiveForCurrentGame = false; // Reset the flag
-                }
-            });
-        } else {
-            console.log(`WARN: Unknown game mode: ${data.gameMode}`);
-        }
-    } else if (data.command === 'stop-game') {
-        if (activeGame) {
-            activeGame.stop();
-            activeGame = null;
-            console.log("LOG: Game stopped by user request.");
-        } else {
-            console.log("WARN: No active game to stop.");
-        }
-        const target = connectedTargets.get(data.targetId);
-        if (target) {
-            target.configureThreshold();
-        }
-    } else if (data.command === 'test-leds') {
-        const target = connectedTargets.get(data.targetId);
-        if (target) {
-            target.display(1, '250 SOLID 255 255 255 | 250 SOLID 0 0 0 | 250 SOLID 255 255 255 | 250 SOLID 0 0 0');
-        }
-    } else if (data.command === 'calibrate-piezo') {
-      const target = connectedTargets.get(data.targetId);
-        if (target) {
-          target.configureThreshold(null);
-        }
-    } else if (data.command === 'test-hit') {
-        const target = connectedTargets.get(data.targetId);
-        if (target) {
-            target.configureHit('lobby_test', 1, 'NONE', '500 SOLID 0 255 0');
-            target.activate(5000, 'test_hit', 'lobby_test', '1000 ANIM PULSE 255 165 0');
-        }
-    } else if (data.command === 'display') {
-        const target = connectedTargets.get(data.targetId);
-        if (target) {
-            target.display(data.loopCount, data.visualScript);
-        }
-    } else if (data.command === 'config-hit') {
-        const target = connectedTargets.get(data.targetId);
-        if (target) {
-            target.configureHit(data.id, data.hits, data.healthBar, data.script);
-        }
-    } else if (data.command === 'config-interim-hit') {
-        const target = connectedTargets.get(data.targetId);
-        if (target) {
-            target.configureInterimHit(data.id, data.script);
-        }
-    } else if (data.command === 'on') {
-        const target = connectedTargets.get(data.targetId);
-        if (target) {
-            target.activate(data.timeout, data.value, data.hitId, data.script);
-        }
-    } else if (data.command === 'off') {
-        const target = connectedTargets.get(data.targetId);
-        if (target) {
-            target.off();
-        }
-    } else if (data.command === 'status-request') {
-        const target = connectedTargets.get(data.targetId);
-        if (target) {
-            target._sendCommand('STATUS_REQUEST');
-        }
-    } else if (data.command === 'display') {
-        const target = connectedTargets.get(data.targetId);
-        if (target) {
-            target.display(data.loopCount, data.visualScript);
-        }
-    } else if (data.command === 'config-hit') {
-        const target = connectedTargets.get(data.targetId);
-        if (target) {
-            target.configureHit(data.id, data.hits, data.healthBar, data.script);
-        }
-    } else if (data.command === 'config-interim-hit') {
-        const target = connectedTargets.get(data.targetId);
-        if (target) {
-            target.configureInterimHit(data.id, data.script);
-        }
-    } else if (data.command === 'on') {
-        const target = connectedTargets.get(data.targetId);
-        if (target) {
-            target.activate(data.timeout, data.value, data.hitId, data.script);
-        }
-    } else if (data.command === 'off') {
-        const target = connectedTargets.get(data.targetId);
-        if (target) {
-            target.off();
-        }
-    } else if (data.command === 'status-request') {
-        const target = connectedTargets.get(data.targetId);
-        if (target) {
-            // The Target class doesn't have a status_request method yet.
-            // For now, we can send the raw command.
-            target._sendCommand('STATUS_REQUEST');
-        }
-    } else if (data.command === 'check-ai-commentary') {
-        ws.send(JSON.stringify({ type: 'AI_COMMENTARY_STATUS', payload: { available: commentator !== null } }));
+        });
+    } else {
+        console.log(`WARN: Unknown game mode: ${gameMode}`);
     }
-    // Handle other commands like ping tests if needed
+}
+
+function handleStopGame() {
+    if (activeGame) {
+        activeGame.stop();
+        activeGame = null;
+        console.log("LOG: Game stopped by user request.");
+    } else {
+        console.log("WARN: No active game to stop.");
+    }
+}
+
+function handleTargetCommand(payload) {
+    const { targetId, command, options } = payload;
+    const target = connectedTargets.get(targetId);
+    if (!target) {
+        console.log(`WARN: Target not found: ${targetId}`);
+        return;
+    }
+
+    switch (command) {
+        case 'test-leds':
+            target.display(1, new VisualScriptBuilder().solid(250, 255, 255, 255).solid(250, 0, 0, 0).solid(250, 255, 255, 255).solid(250, 0, 0, 0));
+            break;
+        case 'calibrate-piezo':
+            target.configureThreshold(null);
+            break;
+        case 'test-hit':
+            target.configureHit('lobby_test', 1, 'NONE', new VisualScriptBuilder().solid(500, 0, 255, 0));
+            target.activate(5000, 'test_hit', 'lobby_test', new VisualScriptBuilder().animation(1000, Animations.PULSE, 255, 165, 0));
+            break;
+        case 'status-request':
+            target._sendCommand('STATUS_REQUEST');
+            break;
+        default:
+            console.log(`WARN: Unknown target command: ${command}`);
+    }
 }
 
 // --- Start the Servers ---

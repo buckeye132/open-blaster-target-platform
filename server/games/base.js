@@ -16,6 +16,10 @@
 
 const { EventEmitter } = require('events');
 const { VisualScriptBuilder } = require('../target');
+let Message;
+import('../assets/protocol.mjs').then(protocol => {
+    Message = protocol.Message;
+});
 
 /**
  * Base class for all game modes, defining a common interface.
@@ -138,9 +142,10 @@ class Game extends EventEmitter {
      * @param {object} payload The message payload.
      */
     broadcast(type, payload) {
-        const message = JSON.stringify({ type, payload });
+        const message = Message.gameUpdate(type, payload);
+        const jsonMessage = JSON.stringify(message);
         for (const client of this.clients) {
-            client.send(message);
+            client.send(jsonMessage);
         }
     }
 }

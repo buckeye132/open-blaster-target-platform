@@ -6,36 +6,33 @@ window.initGame = (options, ws, aiCommentary) => {
     gameStatusEl = document.getElementById('game-status');
     scoreEl = document.getElementById('scoreboard');
 
-    window.handleGameMessage = (data) => {
-        const { type, payload } = data;
+    window.handleGameMessage = (payload) => {
+        const { updateType, ...updatePayload } = payload;
 
-        switch (type) {
+        switch (updateType) {
             case 'gameSetup':
-                updateStatus(payload.message);
+                updateStatus(updatePayload.message);
                 break;
             case 'countdown':
-                updateStatus(`Get Ready... ${payload.count}`);
+                updateStatus(`Get Ready... ${updatePayload.count}`);
                 break;
             case 'gameStart':
-                updateStatus(payload.message);
+                updateStatus(updatePayload.message);
                 updateScore('');
                 break;
             case 'gameUpdate':
-                updateStatus(payload.message);
+                updateStatus(updatePayload.message);
                 break;
             case 'updateScore':
-                updateScore(payload.score);
+                updateScore(updatePayload.score);
                 break;
             case 'gameOver':
-                updateStatus(payload.message || 'Game Over!');
-                break;
-            default:
-                // Not all messages are for this game, so it's safe to ignore them.
+                updateStatus(updatePayload.message || 'Game Over!');
                 break;
         }
     };
 
-    ws.send(JSON.stringify({ command: 'start-game', gameMode: 'simon_says', aiCommentary: aiCommentary }));
+    // The game is started by game.mjs, which sends the C2S_START_GAME message.
 };
 
 function updateStatus(message) {
