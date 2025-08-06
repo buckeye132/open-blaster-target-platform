@@ -34,6 +34,7 @@ const QuickDraw = require('./games/quick_draw');
 const Demo = require('./games/demo');
 const SimonSays = require('./games/simon_says');
 const DistractionAlley = require('./games/distraction_alley');
+const TeamColors = require('./games/team_colors');
 
 // --- Configuration ---
 const WEB_PORT = 8080;
@@ -65,7 +66,8 @@ const gameModes = {
     'quick_draw': QuickDraw,
     'demo': Demo,
     'simon_says': SimonSays,
-    'distraction_alley': DistractionAlley
+    'distraction_alley': DistractionAlley,
+    'team_colors': TeamColors
 };
 
 // --- Helper Functions ---

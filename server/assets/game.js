@@ -56,6 +56,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     gameOptions.gameLength = gameLength ? parseInt(gameLength) : 30;
                 } else if (gameType === 'distraction_alley') {
                     gameOptions.gameLength = gameLength ? parseInt(gameLength) : 30;
+                } else if (gameType === 'team_colors') {
+                    gameOptions.gameLength = gameLength ? parseInt(gameLength) : 30;
                 }
                 window.initGame(gameOptions, ws, aiCommentary);
             }

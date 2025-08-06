@@ -80,6 +80,8 @@ const simonSaysSettings = document.getElementById('simon-says-settings');
 const ssGameLengthInput = document.getElementById('ss-game-length');
 const distractionAlleySettings = document.getElementById('distraction-alley-settings');
 const daGameLengthInput = document.getElementById('da-game-length');
+const teamColorsSettings = document.getElementById('team-colors-settings');
+const tcGameLengthInput = document.getElementById('tc-game-length');
 const aiCommentaryOption = document.getElementById('ai-commentary-option');
 const enableAiCommentaryCheckbox = document.getElementById('enable-ai-commentary');
 
@@ -134,9 +136,6 @@ ws.onmessage = (event) => {
 };
 
 gameModeSelect.addEventListener('change', () => {
-    whackAMoleSettings.style.display = 'none';
-    precisionChallengeSettings.style.display = 'none';
-
     // Hide all game settings initially
     document.querySelectorAll('.game-settings').forEach(el => {
         el.style.display = 'none';
@@ -150,6 +149,8 @@ gameModeSelect.addEventListener('change', () => {
         simonSaysSettings.style.display = 'block';
     } else if (gameModeSelect.value === 'distraction_alley') {
         distractionAlleySettings.style.display = 'block';
+    } else if (gameModeSelect.value === 'team_colors') {
+        teamColorsSettings.style.display = 'block';
     } else if (gameModeSelect.value === 'demo') {
         // No settings for demo mode
     }
@@ -178,6 +179,9 @@ startGameButton.addEventListener('click', () => {
         url += `&gameLength=${gameLength}`;
     } else if (selectedGame === 'distraction_alley') {
         const gameLength = daGameLengthInput.value;
+        url += `&gameLength=${gameLength}`;
+    } else if (selectedGame === 'team_colors') {
+        const gameLength = tcGameLengthInput.value;
         url += `&gameLength=${gameLength}`;
     }
     window.location.href = url;
