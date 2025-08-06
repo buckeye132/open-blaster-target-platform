@@ -4,15 +4,6 @@
 
 # New Game Modes
 
-### "Simon Says" Memory Challenge
-
-* **Concept:** A test of memory and accuracy. The system will display a sequence of colors on different targets. Players must then shoot the targets in the exact same order. Each successful round adds a new step to the sequence, making it progressively harder.
-* **Objective:** Successfully replicate the longest sequence possible. The game ends after the first mistake.
-* **Technical Implementation:**
-    1.  **Display Phase:** The server uses a series of `DISPLAY` commands to show the pattern. For a sequence of Target A (Red) -> Target C (Blue), it would send `DISPLAY 1 1000 SOLID 255 0 0` to Target A, wait for it to finish, then send `DISPLAY 1 1000 SOLID 0 0 255` to Target C. The targets are not "live" during this phase.
-    2.  **Player Phase:** The server activates all targets involved in the sequence with a neutral color (e.g., `ON 15000 step1 standard SOLID 100 100 100`).
-    3.  **Server Logic:** The server maintains the correct sequence in its memory. It waits for `HIT` messages and validates that they come from the correct targets in the correct order. An incorrect hit ends the game, and the server sends `OFF` to all targets.
-
 ### "Armored Takedown"
 
 * **Concept:** A cooperative or competitive "boss battle." One target is designated as the "boss" and requires multiple hits to defeat, while smaller "minion" targets with single hits pop up to distract players.
@@ -26,34 +17,6 @@
         * The server activates the "boss" target: `ON 30000 boss_value boss_final SOLID 255 0 255` (a solid magenta health bar).
         * Simultaneously, it activates single-hit "minion" targets around the field: `ON 5000 minion_value minion SOLID 0 255 255`.
     3.  **Target Logic:** The "boss" target will locally count hits, display the health bar depleting, and play its interim flash animation. It will only send the final `HIT` message to the server after the third hit is registered.
-
-### "Distraction Alley"
-
-* **Concept:** A test of focus. The playfield is filled with flashing, moving, and colorful lights. Only one specific color or pattern is the "real" target. Hitting a "distraction" target might do nothing, or it could be a "penalty" target that subtracts points.
-* **Objective:** Score as many points as possible by only hitting the correct targets.
-* **Technical Implementation:**
-    1.  **Setup:** The server defines configurations for success (`good_hit`) and failure (`bad_hit`).
-    2.  **Gameplay:**
-        * The server sends `DISPLAY` commands to several targets to create visual noise: `DISPLAY 0 500 SOLID 0 0 255 | 500 SOLID 0 0 0` (an indefinite blue blink). These targets are not scorable.
-        * It activates one "good" target: `ON 5000 positive good_hit SOLID 0 255 0`.
-        * It might also activate a "bad" target with a different look: `ON 5000 negative bad_hit SOLID 255 255 0` (solid yellow).
-    3.  **Server Logic:** The server's game logic knows to add points for a `HIT ... positive` message and subtract points for a `HIT ... negative` message, allowing it to create complex risk/reward scenarios.
-
-### "Team Colors" (VS Mode)
-
-* **Concept:** A multiplayer versus mode where each player or team is assigned a color (e.g., Red vs. Blue). Targets will randomly light up in either the Red Team's color, the Blue Team's color, or a neutral "bonus" color (e.g., Green). Players must only shoot their own color.
-* **Objective:** The team with the highest score at the end of the time limit wins.
-* **Scoring:**
-    * Hitting your team's color: **+Points** (based on reaction time).
-    * Hitting the opponent's color: **-Points** (penalty).
-    * Hitting a neutral "bonus" target: **+Large Bonus Points** for whichever team hits it first.
-* **Technical Implementation:**
-    1.  **Setup:** The server sends three `CONFIG_HIT` commands to all targets: `standard_hit`, `penalty_hit`, and `bonus_hit`, each with a unique visual script.
-    2.  **Gameplay:** The server randomly activates targets using different `ON` commands:
-        * `ON 5000 red_team standard_hit SOLID 255 0 0`
-        * `ON 5000 blue_team standard_hit SOLID 0 0 255`
-        * `ON 3000 bonus_point bonus_hit ANIM PULSE 0 255 0`
-    3.  **Server Logic:** The server maintains separate scores for the "red\_team" and "blue\_team". When it receives a `HIT <time> <value>` message, it checks the `<value>` to determine which team's score to modify and whether it's a positive or negative adjustment.
 
 ### "Defuse the Bomb" (Co-op or Solo)
 
