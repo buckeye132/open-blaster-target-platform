@@ -15,6 +15,7 @@
  */
 
 const Game = require('./base');
+const { VisualScriptBuilder, Animations } = require('../target');
 
 const STARTING_TIMEOUT = 1500;
 const TIMEOUT_STEP = 150;
@@ -44,10 +45,10 @@ class PrecisionChallenge extends Game {
         this.broadcast('gameStart', { timeLeft: this.timeLeft });
 
         this.targets.forEach(target => {
-            target.configureHit('positive', 1, 'NONE', '250 SOLID 0 255 0');
-            target.configureHit('negative', 1, 'NONE', '250 SOLID 255 0 0');
-            target.configureHit('flurry_hit', HITS_PER_TARGET_FLURRY, 'DECREMENTAL', '1000 ANIM THEATER_CHASE 0 0 255');
-            target.configureInterimHit('flurry_hit', '150 SOLID 255 255 255');
+            target.configureHit('positive', 1, 'NONE', new VisualScriptBuilder().solid(250, 0, 255, 0));
+            target.configureHit('negative', 1, 'NONE', new VisualScriptBuilder().solid(250, 255, 0, 0));
+            target.configureHit('flurry_hit', HITS_PER_TARGET_FLURRY, 'DECREMENTAL', new VisualScriptBuilder().animation(1000, Animations.THEATER_CHASE, 0, 0, 255));
+            target.configureInterimHit('flurry_hit', new VisualScriptBuilder().solid(150, 255, 255, 255));
         });
 
         this.gameInterval = setInterval(() => this.tick(), 1000);
@@ -90,7 +91,7 @@ class PrecisionChallenge extends Game {
         const isNegative = Math.random() < 0.2;
         const value = isNegative ? 'negative' : 'positive';
         const hitConfigId = isNegative ? 'negative' : 'positive';
-        const visualScript = isNegative ? `${this.targetTimeout} SOLID 255 0 0` : `${this.targetTimeout} SOLID 0 255 0`;
+        const visualScript = isNegative ? new VisualScriptBuilder().solid(this.targetTimeout, 255, 0, 0) : new VisualScriptBuilder().solid(this.targetTimeout, 0, 255, 0);
 
         target.activate(this.targetTimeout, value, hitConfigId, visualScript);
         this.activeTargets.set(target, { value, activationTime: Date.now() });
@@ -161,7 +162,7 @@ class PrecisionChallenge extends Game {
         const targetsToArm = this.targets.slice(0, Math.min(this.targets.length, 4));
         const totalTime = TIME_PER_TARGET_FLURRY * targetsToArm.length;
         targetsToArm.forEach(target => {
-            target.activate(totalTime, 'flurry_hit', 'flurry_hit', '1000 ANIM PULSE 0 0 255');
+            target.activate(totalTime, 'flurry_hit', 'flurry_hit', new VisualScriptBuilder().animation(1000, Animations.PULSE, 0, 0, 255));
             this.activeTargets.set(target, { value: 'flurry_hit', activationTime: Date.now() });
         });
 

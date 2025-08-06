@@ -27,7 +27,7 @@ require('dotenv').config();
 
 
 // Import custom classes
-const Target = require('./target');
+const { Target } = require('./target');
 const PrecisionChallenge = require('./games/precision_challenge');
 const WhackAMole = require('./games/whack_a_mole');
 const QuickDraw = require('./games/quick_draw');

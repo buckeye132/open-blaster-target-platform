@@ -15,18 +15,8 @@
  */
 
 const Game = require('./base');
+const { VisualScriptBuilder, Animations } = require('../target');
 
-const DISTRACTION_ANIMATIONS = [
-    'PULSE',
-    'THEATER_CHASE',
-    'RAINBOW_CYCLE',
-    'COMET',
-    'WIPE',
-    'CYLON',
-    'SPARKLE',
-    'FIRE',
-    'CONVERGE'
-];
 
 class DistractionAlley extends Game {
     constructor(clients, targets, options) {
@@ -50,7 +40,7 @@ class DistractionAlley extends Game {
 
         // Configure hits
         this.targets.forEach(target => {
-            target.configureHit('game_hit', 1, 'NONE', '0 SOLID 0 0 0');
+            target.configureHit('game_hit', 1, 'NONE', new VisualScriptBuilder().solid(0, 0, 0, 0));
         });
 
         // Initial spawn for all targets
@@ -84,23 +74,23 @@ class DistractionAlley extends Game {
         const timeout = Math.random() * 1500 + 500; // .5 - 2 second activation time
 
         if (isGood) {
-            target.activate(timeout, 'positive', 'game_hit', '0 SOLID 0 255 0');
+            target.activate(timeout, 'positive', 'game_hit', new VisualScriptBuilder().solid(0, 0, 255, 0));
         } else {
-            const anim = DISTRACTION_ANIMATIONS[Math.floor(Math.random() * DISTRACTION_ANIMATIONS.length)];
+            const anim = Object.values(Animations)[Math.floor(Math.random() * Object.values(Animations).length)];
             const r = Math.floor(Math.random() * 256);
             const g = Math.floor(Math.random() * 256);
             const b = Math.floor(Math.random() * 256);
-            target.activate(timeout, 'negative', 'game_hit', `0 ANIM ${anim} ${r} ${g} ${b}`);
+            target.activate(timeout, 'negative', 'game_hit', new VisualScriptBuilder().animation(0, anim, r, g, b));
         }
     }
 
     handleHit(target, { value }) {
         if (value === 'positive') {
             this.score++;
-            target.display(1, '250 SOLID 0 255 0'); // Flash green for good hit
+            target.display(1, new VisualScriptBuilder().solid(250, 0, 255, 0)); // Flash green for good hit
         } else if (value === 'negative') {
             this.score--;
-            target.display(1, '250 SOLID 255 0 0'); // Flash red for bad hit
+            target.display(1, new VisualScriptBuilder().solid(250, 255, 0, 0)); // Flash red for bad hit
         }
         this.broadcast('updateScore', { score: this.score });
 

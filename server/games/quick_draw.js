@@ -15,6 +15,7 @@
  */
 
 const Game = require('./base');
+const { VisualScriptBuilder, Animations } = require('../target');
 
 class QuickDraw extends Game {
     constructor(clients, targets, options) {
@@ -36,14 +37,14 @@ class QuickDraw extends Game {
         // Configure all targets for the game
         this.targets.forEach(target => {
             // Use the celebratory RAINBOW_CYCLE animation for the winning hit.
-            target.configureHit('quick_draw_hit', 1, 'NONE', '1500 ANIM RAINBOW_CYCLE 0 0 0');
+            target.configureHit('quick_draw_hit', 1, 'NONE', new VisualScriptBuilder().animation(1500, Animations.RAINBOW_CYCLE, 0, 0, 0));
         });
 
         const delay = Math.random() * 3000 + 2000; // 2-5 second delay
         this.gameTimeout = setTimeout(() => {
             this.activeTarget = this.targets[Math.floor(Math.random() * this.targets.length)];
             this.broadcast('gameUpdate', { message: 'GO!' });
-            this.activeTarget.activate(10000, this.activeTarget.id, 'quick_draw_hit', '1000 ANIM PULSE 255 0 0');
+            this.activeTarget.activate(10000, this.activeTarget.id, 'quick_draw_hit', new VisualScriptBuilder().animation(1000, Animations.PULSE, 255, 0, 0));
         }, delay);
     }
 

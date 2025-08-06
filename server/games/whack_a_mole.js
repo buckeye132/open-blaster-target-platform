@@ -15,6 +15,7 @@
  */
 
 const Game = require('./base');
+const { VisualScriptBuilder, Animations } = require('../target');
 
 class WhackAMole extends Game {
     constructor(clients, targets, options) {
@@ -39,7 +40,7 @@ class WhackAMole extends Game {
         this.targets.forEach(target => {
             // Use the WIPE animation for a satisfying hit effect.
             let animationTime = Math.min(500, this.targetTimeout);
-            target.configureHit('standard', 1, 'NONE', `${animationTime} ANIM THEATER_CHASE 255 165 0`);
+            target.configureHit('standard', 1, 'NONE', new VisualScriptBuilder().animation(animationTime, Animations.THEATER_CHASE, 255, 165, 0));
         });
 
         this.pickAndActivateTarget();
@@ -68,7 +69,7 @@ class WhackAMole extends Game {
         }
 
         this.activeTarget = availableTargets[Math.floor(Math.random() * availableTargets.length)];
-        this.activeTarget.activate(this.targetTimeout, 'positive', 'standard', `${this.targetTimeout} SOLID 0 255 0`);
+        this.activeTarget.activate(this.targetTimeout, 'positive', 'standard', new VisualScriptBuilder().solid(this.targetTimeout, 0, 255, 0));
     }
 
     handleHit(target, { value }) {

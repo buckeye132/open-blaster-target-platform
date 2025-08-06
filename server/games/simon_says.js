@@ -16,6 +16,7 @@
  */
 
 const Game = require('./base');
+const { VisualScriptBuilder, Animations } = require('../target');
 
 class SimonSays extends Game {
     constructor(clients, targets, options) {
@@ -39,7 +40,7 @@ class SimonSays extends Game {
         // Configure all targets for the game
         this.targets.forEach(target => {
             // The visual script is now handled by the server in handleHit
-            target.configureHit('simon_says_hit', 1, 'NONE', '0 SOLID 0 0 0');
+            target.configureHit('simon_says_hit', 1, 'NONE', new VisualScriptBuilder().solid(0, 0, 0, 0));
         });
 
         await this.nextRound();
@@ -71,7 +72,7 @@ class SimonSays extends Game {
     async playSequence() {
         for (const target of this.sequence) {
             // Turn the target on with a solid color for 1 second
-            target.display(1, '1000 SOLID 255 0 0');
+            target.display(1, new VisualScriptBuilder().solid(1000, 255, 0, 0));
             await new Promise(resolve => setTimeout(resolve, 1200)); // Wait for display to finish + a small gap
         }
     }
@@ -79,7 +80,7 @@ class SimonSays extends Game {
     activateTargets() {
         this.targets.forEach(target => {
             // The duration for the activate script is a placeholder and is ignored by the firmware.
-            target.activate(15000, target.id, 'simon_says_hit', '0 SOLID 100 100 100');
+            target.activate(15000, target.id, 'simon_says_hit', new VisualScriptBuilder().solid(0, 100, 100, 100));
         });
     }
 
@@ -92,7 +93,7 @@ class SimonSays extends Game {
         const correctTarget = this.sequence[this.playerSequence.length - 1];
 
         if (target !== correctTarget) {
-            this.targets.forEach(t => t.display(1, '1000 ANIM THEATER_CHASE 255 0 0'));
+            this.targets.forEach(t => t.display(1, new VisualScriptBuilder().animation(1000, Animations.THEATER_CHASE, 255, 0, 0)));
             this.broadcast('gameOver', { message: `Wrong hit! You made it to round ${this.round}.` });
             // stop after animation completes
             setTimeout(() => this.stop(), 1000);
@@ -100,14 +101,14 @@ class SimonSays extends Game {
             // Correct hit.
             if (this.playerSequence.length === this.sequence.length) {
                 // Round complete, play a final success animation on the last target.
-                this.targets.forEach(t => t.display(1, '1000 ANIM THEATER_CHASE 0 255 0'));
+                this.targets.forEach(t => t.display(1, new VisualScriptBuilder().animation(1000, Animations.THEATER_CHASE, 0, 255, 0)));
                 this.round++;
                 this.broadcast('gameUpdate', { message: 'Good job! Next round...' });
                 setTimeout(() => this.nextRound(), 1500);
             } else {
                 // Sequence is not over. Flash the target green to give feedback,
                 // then immediately reactivate it for the next potential hit.
-                target.display(1, '250 SOLID 0 255 0');
+                target.display(1, new VisualScriptBuilder().solid(250, 0, 255, 0));
 
                 setTimeout(() => {
                     this.activateTargets();

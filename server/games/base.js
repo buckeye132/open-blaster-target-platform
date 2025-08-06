@@ -15,6 +15,7 @@
  */
 
 const { EventEmitter } = require('events');
+const { VisualScriptBuilder } = require('../target');
 
 /**
  * Base class for all game modes, defining a common interface.
@@ -47,9 +48,9 @@ class Game extends EventEmitter {
 
         // 2. 5-second countdown with flashing targets
         this.broadcast('gameSetup', { stage: 'countdown', message: 'Get ready!' });
-        const redFlash = '250 SOLID 255 0 0';
-        const yellowFlash = '250 SOLID 255 255 0';
-        const greenFlash = '250 SOLID 0 255 0';
+        const redFlash = new VisualScriptBuilder().solid(250, 255, 0, 0);
+        const yellowFlash = new VisualScriptBuilder().solid(250, 255, 255, 0);
+        const greenFlash = new VisualScriptBuilder().solid(250, 0, 255, 0);
 
         for (let i = 5; i > 0; i--) {
             this.broadcast('countdown', { count: i });

@@ -88,17 +88,27 @@ All games should have a finite duration. This prevents games from running indefi
 
 ### Visual Script Syntax
 
-The firmware requires a placeholder duration at the beginning of a visual script for `activate` commands. While this value is ignored by the firmware for `activate`, it is still required.
+**All new code MUST use the `VisualScriptBuilder` to construct valid `<visual_script>` strings.** This avoids manual string manipulation, which is error-prone. Legacy code should be updated to use the builder when it is modified.
 
-- **Correct:** `target.activate(5000, 'my_value', 'my_hit_id', '0 SOLID 255 0 0');`
-- **Incorrect:** `target.activate(5000, 'my_value', 'my_hit_id', 'SOLID 255 0 0');`
+- **Location:** The `VisualScriptBuilder` is located in `server/target.js`.
+- **Import:** `const { VisualScriptBuilder, Animations } = require('./target');`
+- **Example:**
+  ```javascript
+  const script = new VisualScriptBuilder()
+      .solid(500, 255, 0, 0) // Red for 500ms
+      .animation(1000, Animations.PULSE, 0, 0, 255) // Blue pulse for 1000ms
+      .build();
+  target.activate(5000, 'my_value', 'my_hit_id', script);
+  ```
 
 ### Use Animations for Visual Effects
 
 The firmware supports a variety of animations that can be used to make games more visually appealing and to provide feedback to the player. Use these to create a more engaging experience.
 
+- **`Animations` Enum:** Use the `Animations` enum from `server/target.js` to specify which animation to use. This ensures you are using a valid animation name.
+- **Adding New Animations:** If you add a new animation to the firmware, you **must** also add it to the `Animations` enum in `server/target.js`.
 - **Available Animations:** `PULSE`, `THEATER_CHASE`, `RAINBOW_CYCLE`, `COMET`, `WIPE`, `CYLON`, `SPARKLE`, `FIRE`, `CONVERGE`.
-- **Example:** `target.display(1, '1000 ANIM THEATER_CHASE 0 255 0');`
+- **Example:** `target.display(1, new VisualScriptBuilder().animation(1000, Animations.THEATER_CHASE, 0, 255, 0).build());`
 
 ### Adding a Configurable Option to the Lobby
 

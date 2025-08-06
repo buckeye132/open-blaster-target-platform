@@ -15,18 +15,8 @@
  */
 
 const Game = require('./base');
+const { VisualScriptBuilder, Animations } = require('../target');
 
-const ANIMATIONS = [
-    'PULSE',
-    'THEATER_CHASE',
-    'RAINBOW_CYCLE',
-    'COMET',
-    'WIPE',
-    'CYLON',
-    'SPARKLE',
-    'FIRE',
-    'CONVERGE'
-];
 
 class Demo extends Game {
     constructor(clients, targets) {
@@ -56,14 +46,15 @@ class Demo extends Game {
 
     async runAnimationSequence() {
         this.broadcast('gameUpdate', { message: 'Cycling animations...' });
+        const animationKeys = Object.keys(Animations);
         const numTargets = this.targets.length;
-        for (let i = 0; i < ANIMATIONS.length; i += numTargets) {
-            const batch = ANIMATIONS.slice(i, i + numTargets);
+        for (let i = 0; i < animationKeys.length; i += numTargets) {
+            const batch = animationKeys.slice(i, i + numTargets);
             const promises = batch.map((animation, index) => {
                 const target = this.targets[index];
                 if (target) {
                     this.broadcast('gameUpdate', { message: `Animation: ${animation}` });
-                    return target.display(1, `1000 ANIM ${animation} 255 255 255`);
+                    return target.display(1, new VisualScriptBuilder().animation(1000, Animations[animation], 255, 255, 255));
                 }
             });
             await Promise.all(promises);
@@ -76,8 +67,8 @@ class Demo extends Game {
             this.broadcast('gameUpdate', { message: 'Hit the target!' });
             this.state = 'single_hit';
             this.activeTarget = this.targets[Math.floor(Math.random() * this.targets.length)];
-            this.activeTarget.configureHit('demo_hit', 1, 'NONE', '1000 ANIM THEATER_CHASE 0 0 0');
-            this.activeTarget.activate(10000, 'single_hit', 'demo_hit', '1000 ANIM PULSE 255 0 0');
+            this.activeTarget.configureHit('demo_hit', 1, 'NONE', new VisualScriptBuilder().animation(1000, Animations.THEATER_CHASE, 0, 0, 0));
+            this.activeTarget.activate(10000, 'single_hit', 'demo_hit', new VisualScriptBuilder().animation(1000, Animations.PULSE, 255, 0, 0));
             this.gameTimeout = setTimeout(() => {
                 this.activeTarget.off();
                 resolve();
@@ -91,10 +82,9 @@ class Demo extends Game {
             this.broadcast('gameUpdate', { message: 'Hit the target 5 times!' });
             this.state = 'multi_hit';
             this.activeTarget = this.targets[Math.floor(Math.random() * this.targets.length)];
-            this.activeTarget = this.targets[Math.floor(Math.random() * this.targets.length)];
-            this.activeTarget.configureHit('demo_multi_hit', 5, 'DECREMENTAL', '1500 ANIM THEATER_CHASE 0 0 0');
-            this.activeTarget.configureInterimHit('demo_multi_hit', '150 SOLID 255 255 255');
-            this.activeTarget.activate(20000, 'multi_hit', 'demo_multi_hit', '1000 ANIM PULSE 0 0 255');
+            this.activeTarget.configureHit('demo_multi_hit', 5, 'DECREMENTAL', new VisualScriptBuilder().animation(1500, Animations.THEATER_CHASE, 0, 0, 0));
+            this.activeTarget.configureInterimHit('demo_multi_hit', new VisualScriptBuilder().solid(150, 255, 255, 255));
+            this.activeTarget.activate(20000, 'multi_hit', 'demo_multi_hit', new VisualScriptBuilder().animation(1000, Animations.PULSE, 0, 0, 255));
             this.gameTimeout = setTimeout(() => {
                 this.activeTarget.off();
                 resolve();

@@ -15,6 +15,7 @@
  */
 
 const Game = require('./base');
+const { VisualScriptBuilder, Animations } = require('../target');
 
 const HITS_TO_FLURRY = 5;
 const BONUS_POINTS = 3000;
@@ -43,8 +44,8 @@ class TeamColors extends Game {
 
         // Configure hits for main game
         this.targets.forEach(target => {
-            target.configureHit('green_hit', 1, 'NONE', '500 ANIM THEATER_CHASE 0 255 0');
-            target.configureHit('blue_hit', 1, 'NONE', '500 ANIM THEATER_CHASE 0 0 255');
+            target.configureHit('green_hit', 1, 'NONE', new VisualScriptBuilder().animation(500, Animations.THEATER_CHASE, 0, 255, 0));
+            target.configureHit('blue_hit', 1, 'NONE', new VisualScriptBuilder().animation(500, Animations.THEATER_CHASE, 0, 0, 255));
         });
 
         this.gameInterval = setInterval(() => this.tick(), 1000);
@@ -102,16 +103,16 @@ class TeamColors extends Game {
 
         // Configure and activate green target
         let hitConfigId = 'green_flurry_hit';
-        greenTarget.configureHit(hitConfigId, HITS_TO_FLURRY, 'DECREMENTAL', '0 SOLID 0 0 0');
-        greenTarget.configureInterimHit(hitConfigId, '150 SOLID 255 255 255');
-        greenTarget.activate(30000, 'green', hitConfigId, `30000 ANIM PULSE 0 255 0`);
+        greenTarget.configureHit(hitConfigId, HITS_TO_FLURRY, 'DECREMENTAL', new VisualScriptBuilder().solid(0, 0, 0, 0));
+        greenTarget.configureInterimHit(hitConfigId, new VisualScriptBuilder().solid(150, 255, 255, 255));
+        greenTarget.activate(30000, 'green', hitConfigId, new VisualScriptBuilder().animation(30000, Animations.PULSE, 0, 255, 0));
         this.activeTargets.set(greenTarget, { value: 'green', activationTime: Date.now() });
 
         // Configure and activate blue target
         hitConfigId = 'blue_flurry_hit';
-        blueTarget.configureHit(hitConfigId, HITS_TO_FLURRY, 'DECREMENTAL', '0 SOLID 0 0 0');
-        blueTarget.configureInterimHit(hitConfigId, '150 SOLID 255 255 255');
-        blueTarget.activate(30000, 'blue', hitConfigId, `30000 ANIM PULSE 0 0 255`);
+        blueTarget.configureHit(hitConfigId, HITS_TO_FLURRY, 'DECREMENTAL', new VisualScriptBuilder().solid(0, 0, 0, 0));
+        blueTarget.configureInterimHit(hitConfigId, new VisualScriptBuilder().solid(150, 255, 255, 255));
+        blueTarget.activate(30000, 'blue', hitConfigId, new VisualScriptBuilder().animation(30000, Animations.PULSE, 0, 0, 255));
         this.activeTargets.set(blueTarget, { value: 'blue', activationTime: Date.now() });
     }
 
@@ -130,7 +131,7 @@ class TeamColors extends Game {
         }
 
         this.targets.forEach(target => {
-            target.display(3000, `3000 ANIM SPARKLE ${winningColorRGB}`);
+            target.display(1, new VisualScriptBuilder().animation(3000, Animations.SPARKLE, ...winningColorRGB.split(' ').map(Number)));
         });
 
         setTimeout(() => {
@@ -153,13 +154,13 @@ class TeamColors extends Game {
         if (actionType < 0.3) { // Green target
             const value = 'green_team';
             const hitConfigId = 'green_hit';
-            const visualScript = `${duration} SOLID 0 255 0`;
+            const visualScript = new VisualScriptBuilder().solid(duration, 0, 255, 0);
             target.activate(duration, value, hitConfigId, visualScript);
             this.activeTargets.set(target, { value, activationTime: Date.now() });
         } else if (actionType < 0.6) { // Blue target
             const value = 'blue_team';
             const hitConfigId = 'blue_hit';
-            const visualScript = `${duration} SOLID 0 0 255`;
+            const visualScript = new VisualScriptBuilder().solid(duration, 0, 0, 255);
             target.activate(duration, value, hitConfigId, visualScript);
             this.activeTargets.set(target, { value, activationTime: Date.now() });
         } else { // Nothing (delay)
