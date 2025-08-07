@@ -55,7 +55,7 @@ jest.mock('@google/genai', () => ({
     }
 }));
 
-const commentatorWorker = require('../ai/commentator_worker');
+const commentatorWorker = require('../../ai/commentator_worker');
 const { parentPort } = require('worker_threads');
 
 
@@ -69,10 +69,10 @@ describe('Commentator Worker', () => {
     });
 
     it('should play audio using ffplay when an audio message is received', () => {
-        const { onMessage } = require('../ai/commentator_worker');
+        const { onMessage } = require('../../ai/commentator_worker');
         const audioData = 'fake_audio_data';
         const audioBuffer = Buffer.from(audioData, 'base64');
-        const filePath = path.join(__dirname, '../ai/commentary.wav');
+        const filePath = path.join(__dirname, '../../ai/commentary.wav');
 
         const message = {
             serverContent: {
