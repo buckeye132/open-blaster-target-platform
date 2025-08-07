@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-const Demo = require('../games/demo');
+const Demo = require('../../games/demo');
 const StubTarget = require('./stub_target');
-const { Animations } = require('../target');
+const { Animations } = require('../../target');
 
 jest.useFakeTimers();
 
@@ -86,4 +86,3 @@ describe('Demo Game Mode', () => {
         expect(multiHitActivate).toBe(true);
     });
 });
-

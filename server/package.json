@@ -5,15 +5,17 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js && playwright test"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "dotenv": "^17.2.1",
     "ws": "^8.17.1"
   },
   "devDependencies": {
     "@google/genai": "^1.13.0",
+    "@playwright/test": "^1.54.2",
     "jest": "^30.0.5"
   }
 }
