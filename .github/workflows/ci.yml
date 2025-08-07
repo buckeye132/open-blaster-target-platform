@@ -24,4 +24,4 @@ jobs:
         run: npx playwright install --with-deps
 
       - name: Run tests
-        run: npm test
+        run: cd server && npm test
