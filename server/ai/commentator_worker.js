@@ -1,11 +1,10 @@
 const { parentPort } = require('worker_threads');
 const { GoogleGenAI, Modality } = require('@google/genai');
-const Speaker = require('speaker');
 const fs = require('fs');
 const path = require('path');
+const { exec } = require('child_process');
 
 let liveSession = null;
-let speaker = null;
 let eventQueue = [];
 let ticker = null;
 let isGameOver = false;
@@ -35,13 +34,6 @@ async function start(gameMode, gameSettings) {
     if (liveSession || ticker) {
         close();
     }
-
-    speaker = new Speaker({
-        channels: 1,
-        bitDepth: 16,
-        sampleRate: 24000,
-        endianness: 'LE'
-    });
 
     try {
         const basePromptPath = path.join(__dirname, 'prompts', 'base_commentator.txt');
@@ -73,13 +65,19 @@ async function start(gameMode, gameSettings) {
     }
 }
 
-function onMessage(message) {
+module.exports.onMessage = function onMessage(message) {
     // Process the audio data.
-    if (speaker && message.serverContent && message.serverContent.modelTurn && message.serverContent.modelTurn.parts) {
+    if (message.serverContent && message.serverContent.modelTurn && message.serverContent.modelTurn.parts) {
         for (const part of message.serverContent.modelTurn.parts) {
             if (part.inlineData && part.inlineData.mimeType.startsWith('audio/')) {
                 const audioBuffer = Buffer.from(part.inlineData.data, 'base64');
-                speaker.write(audioBuffer);
+                const filePath = path.join(__dirname, 'commentary.wav');
+                fs.writeFileSync(filePath, audioBuffer);
+                exec(`ffplay -autoexit -nodisp ${filePath}`, (error, stdout, stderr) => {
+                    if (error) {
+                        console.error(`Error playing audio: ${error}`);
+                    }
+                });
             }
         }
     } else {
@@ -157,12 +155,5 @@ function close() {
         liveSession.close();
         liveSession = null;
     }
-    if (speaker) {
-        speaker.end(() => {
-            console.log("AI Worker: Speaker finished.");
-            parentPort.postMessage({ type: 'closed' });
-        });
-    } else {
-        parentPort.postMessage({ type: 'closed' });
-    }
+    parentPort.postMessage({ type: 'closed' });
 }

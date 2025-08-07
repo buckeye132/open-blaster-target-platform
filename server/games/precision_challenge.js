@@ -98,6 +98,7 @@ class PrecisionChallenge extends Game {
     }
 
     handleHit(target, { reactionTime, value }) {
+        console.log(`[PrecisionChallenge] handleHit: target=${target.id}, value=${value}`);
         if (!this.activeTargets.has(target)) return;
 
         if (this.hitFlurryActive) {
@@ -131,6 +132,7 @@ class PrecisionChallenge extends Game {
     }
 
     handleExpired(target, value) {
+        console.log(`[PrecisionChallenge] handleExpired: target=${target.id}, value=${value}, currentTimeout=${this.targetTimeout}, TIMEOUT_STEP=${TIMEOUT_STEP}`);
         if (!this.activeTargets.has(target)) return;
 
         if (this.hitFlurryActive) return;

@@ -73,6 +73,7 @@ class WhackAMole extends Game {
     }
 
     handleHit(target, { value }) {
+        console.log(`[WhackAMole] handleHit: target=${target.id}, value=${value}`);
         if (target === this.activeTarget) {
             this.score++;
             this.broadcast('updateScore', { score: this.score });
@@ -81,6 +82,7 @@ class WhackAMole extends Game {
     }
 
     handleExpired(target, value) {
+        console.log(`[WhackAMole] handleExpired: target=${target.id}, value=${value}`);
         if (target === this.activeTarget) {
             this.pickAndActivateTarget();
         }

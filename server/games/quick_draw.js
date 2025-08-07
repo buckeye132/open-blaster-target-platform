@@ -58,6 +58,7 @@ class QuickDraw extends Game {
     }
 
     onHit(target, { reactionTime, value }) {
+        console.log(`[QuickDraw] onHit: target=${target.id}, value=${value}`);
         if (target !== this.activeTarget) return; // Wrong target hit
 
         const score = `${reactionTime} ms`;
@@ -69,6 +70,7 @@ class QuickDraw extends Game {
     }
 
     onExpired(target, value) {
+        console.log(`[QuickDraw] onExpired: target=${target.id}, value=${value}`);
         if (target !== this.activeTarget) return;
 
         this.broadcast('gameOver', { message: 'Missed! You were too slow.' });

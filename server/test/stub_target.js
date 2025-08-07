@@ -73,24 +73,45 @@ class StubTarget extends EventEmitter {
         this.eventLog.push(`configureInterimHit(${id}, ${script})`);
     }
 
+
     activate(timeoutMs, value, hitConfigId, visualScript) {
+        this.isActive = true;
         const script = typeof visualScript === 'string' ? visualScript : visualScript.build();
         this.eventLog.push(`activate(${timeoutMs}, ${value}, ${hitConfigId}, ${script})`);
+        console.log(`[StubTarget ${this.id}] activated with value: ${value}`);
 
         if (this.hitQueue.length > 0) {
             const hit = this.hitQueue.shift();
-            console.log(`[StubTarget ${this.id}] Queued hit will fire in ${hit.reactionTime}ms`);
+            console.log(`[StubTarget ${this.id}] Queued hit will fire in ${hit.reactionTime}ms for value: ${hit.value}`);
             setTimeout(() => {
                 console.log(`[StubTarget ${this.id}] Firing hit: ${hit.value}`);
                 this.emit('hit', { reactionTime: hit.reactionTime, value: hit.value });
             }, hit.reactionTime);
         } else if (this.missQueue.length > 0) {
             const miss = this.missQueue.shift();
-            console.log(`[StubTarget ${this.id}] Queued miss will fire in ${timeoutMs}ms`);
+            console.log(`[StubTarget ${this.id}] Queued miss will fire in ${timeoutMs}ms for value: ${miss.value}`);
             setTimeout(() => {
                 console.log(`[StubTarget ${this.id}] Firing miss: ${miss.value}`);
                 this.emit('expired', { value: miss.value });
             }, timeoutMs);
+        }
+    }
+
+    queueHit(reactionTime, value) {
+        if (this.isActive) {
+            console.log(`[StubTarget ${this.id}] Firing hit immediately: ${value}`);
+            this.emit('hit', { reactionTime, value });
+        } else {
+            this.hitQueue.push({ reactionTime, value });
+        }
+    }
+
+    queueMiss(value) {
+        if (this.isActive) {
+            console.log(`[StubTarget ${this.id}] Firing miss immediately: ${value}`);
+            this.emit('expired', value);
+        } else {
+            this.missQueue.push({ value });
         }
     }
 

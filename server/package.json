@@ -10,10 +10,10 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "speaker": "^0.5.5",
     "ws": "^8.17.1"
   },
   "devDependencies": {
+    "@google/genai": "^1.13.0",
     "jest": "^30.0.5"
   }
 }
