@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';">
+    <title>Open Blaster Target Simulator</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <div class="controls">
+        <input type="text" id="server-ip" placeholder="Server IP (e.g., 127.0.0.1)" value="127.0.0.1">
+        <button id="add-target-btn">Add Target</button>
+    </div>
+    <div id="targets-container"></div>
+    <script src="renderer.js"></script>
+  </body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "name": "open-blaster-target-simulator",
+  "version": "1.0.0",
+  "description": "A simulator for the Open Blaster Target Platform.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^28.0.0"
+  }
+}

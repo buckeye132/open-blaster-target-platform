@@ -88,12 +88,7 @@ function broadcastTargetList() {
     broadcastToWeb(Message.targetListUpdate(targetList));
 }
 
-// --- TCP Server (for the ESP32 target) ---
-const tcpServer = net.createServer((socket) => {
-    let socketId = socket.remoteAddress;
-    if (socketId.startsWith('::ffff:')) {
-        socketId = socketId.slice(7);
-    }
+function registerTarget(socket, socketId) {
     socket.id = socketId;
     socket.setKeepAlive(true, 3000);
 
@@ -113,6 +108,11 @@ const tcpServer = net.createServer((socket) => {
         if (activeGame) {
             // Pass the reaction time along with the value
             activeGame.onHit(target, { reactionTime, value });
+        } else {
+            // If no game is active, just log it to the web UI for diagnostics
+            console.log(`LOG: Hit registered for ${target.id} outside of a game.`);
+            const logMessage = `HIT received! Reaction: ${reactionTime}ms, Value: ${value}`;
+            broadcastToWeb(Message.targetLogMessage(target.id, logMessage));
         }
     });
 
@@ -135,6 +135,45 @@ const tcpServer = net.createServer((socket) => {
     target.on('error', (err) => {
         console.error(`Socket Error from ${socket.id}:`, err.message);
     });
+}
+
+// --- TCP Server (for the ESP32 target) ---
+const tcpServer = net.createServer((socket) => {
+    const remoteIp = socket.remoteAddress.includes('::ffff:') ? socket.remoteAddress.slice(7) : socket.remoteAddress;
+    const isLocal = remoteIp === '127.0.0.1' || remoteIp === '::1';
+
+    if (isLocal) {
+        // Handle simulated target handshake
+        const handshakeTimeout = setTimeout(() => {
+            console.log('LOG: Local client failed to send handshake, disconnecting.');
+            socket.destroy();
+        }, 2000); // 2-second timeout for handshake
+
+        socket.once('data', (data) => {
+            clearTimeout(handshakeTimeout);
+            const message = data.toString();
+            if (message.startsWith('ID_SIMULATED:')) {
+                const socketId = message.split(':')[1].trim();
+                if (socketId) {
+                    registerTarget(socket, socketId);
+                    // Manually emit the rest of the data for the new target instance to process
+                    const remainingData = message.substring(message.indexOf('\n') + 1);
+                    if (remainingData) {
+                        socket.emit('data', remainingData);
+                    }
+                } else {
+                    console.log('LOG: Local client sent empty ID, disconnecting.');
+                    socket.destroy();
+                }
+            } else {
+                console.log('LOG: Local client sent invalid handshake, disconnecting.');
+                socket.destroy();
+            }
+        });
+    } else {
+        // Handle real hardware target
+        registerTarget(socket, remoteIp);
+    }
 });
 
 // --- Web Server (for the UI) ---
