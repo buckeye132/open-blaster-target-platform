@@ -1,28 +1,107 @@
-/*
- * Copyright 2025 https://github.com/buckeye132
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 import { Message, MessageType } from './protocol.mjs';
 
 const ws = new WebSocket('ws://' + window.location.host);
 const targetGrid = document.getElementById('target-grid');
+const gameModeSelect = document.getElementById('game-mode-select');
+const gameOptionsContainer = document.getElementById('game-options-container');
+const startGameButton = document.getElementById('start-game-button');
+const aiCommentaryOption = document.getElementById('ai-commentary-option');
+const enableAiCommentaryCheckbox = document.getElementById('enable-ai-commentary');
 
 let targets = {}; // Store target state
+let gameOptions = {}; // Store all game options fetched from the server
 
-function sendCommandToServer(message) {
-  ws.send(JSON.stringify(message));
+// --- WebSocket Handlers ---
+
+ws.onopen = () => {
+    ws.send(JSON.stringify(Message.getAiAvailability()));
+    fetchGameOptions();
+};
+
+ws.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    const { type, payload } = data;
+
+    switch (type) {
+        case MessageType.S2C_AI_AVAILABILITY:
+            aiCommentaryOption.style.display = payload.available ? 'block' : 'none';
+            break;
+        case MessageType.S2C_TARGET_LIST_UPDATE:
+            updateTargetGrid(payload.targetList);
+            break;
+        case MessageType.S2C_TARGET_LOG_MESSAGE:
+            handleTargetLog(payload);
+            break;
+    }
+};
+
+// --- UI Functions ---
+
+function fetchGameOptions() {
+    fetch('/games/options')
+        .then(response => response.json())
+        .then(options => {
+            gameOptions = options;
+            // Trigger a change event to render the initial options
+            gameModeSelect.dispatchEvent(new Event('change'));
+        })
+        .catch(error => console.error('Error fetching game options:', error));
+}
+
+function renderGameOptions(gameId) {
+    gameOptionsContainer.innerHTML = '';
+    const options = gameOptions[gameId];
+
+    if (!options || Object.keys(options).length === 0) {
+        gameOptionsContainer.style.display = 'none';
+        return;
+    }
+
+    gameOptionsContainer.style.display = 'block';
+
+    for (const key in options) {
+        const option = options[key];
+        const optionEl = document.createElement('div');
+        optionEl.className = 'game-option';
+
+        const label = document.createElement('label');
+        label.htmlFor = `option-${key}`;
+        label.textContent = option.label;
+
+        const input = document.createElement('input');
+        input.type = option.type;
+        input.id = `option-${key}`;
+        input.name = key;
+        input.value = option.default;
+        if (option.min) input.min = option.min;
+        if (option.max) input.max = option.max;
+        if (option.step) input.step = option.step;
+
+        optionEl.appendChild(label);
+        optionEl.appendChild(input);
+        gameOptionsContainer.appendChild(optionEl);
+    }
+}
+
+function updateTargetGrid(targetList) {
+    const onlineTargets = new Set(targetList);
+
+    // Add new targets
+    for (const targetId of onlineTargets) {
+        if (!targets[targetId]) {
+            targets[targetId] = { online: true };
+        }
+        targets[targetId].online = true;
+        renderTargetCard(targetId);
+    }
+
+    // Mark disconnected targets as offline
+    for (const targetId in targets) {
+        if (!onlineTargets.has(targetId)) {
+            targets[targetId].online = false;
+        }
+        renderTargetCard(targetId);
+    }
 }
 
 function renderTargetCard(targetId) {
@@ -47,6 +126,18 @@ function renderTargetCard(targetId) {
     card.classList.toggle('offline', !target.online);
 }
 
+function handleTargetLog({ from, message }) {
+    if (message.startsWith('HIT')) {
+        updateTargetStatus(from, 'HIT Detected!', 'hit');
+    } else if (message.startsWith('EXPIRED')) {
+        updateTargetStatus(from, 'Hit Test EXPIRED', 'expired');
+    } else if (message.includes('Auto-calibration complete')) {
+        const thresholdMatch = message.match(/New threshold: (\d+)/);
+        const status = thresholdMatch ? `Calibrated! Threshold: ${thresholdMatch[1]}` : 'Calibration Finished';
+        updateTargetStatus(from, status, 'hit');
+    }
+}
+
 function updateTargetStatus(targetId, message, type = 'info') {
     const statusEl = document.getElementById(`status-${targetId.replace(/[:.]/g, '-')}`);
     if (statusEl) {
@@ -55,129 +146,39 @@ function updateTargetStatus(targetId, message, type = 'info') {
     }
 }
 
+// --- Global Functions for Buttons ---
+
 window.calibrateTarget = (targetId) => {
-    sendCommandToServer(Message.targetCommand(targetId, 'calibrate-piezo'));
+    ws.send(JSON.stringify(Message.targetCommand(targetId, 'calibrate-piezo')));
     updateTargetStatus(targetId, 'Calibrating...');
 };
 
 window.testLeds = (targetId) => {
-    sendCommandToServer(Message.targetCommand(targetId, 'test-leds'));
+    ws.send(JSON.stringify(Message.targetCommand(targetId, 'test-leds')));
     updateTargetStatus(targetId, 'LEDs Tested');
 };
 
 window.testHit = (targetId) => {
-    sendCommandToServer(Message.targetCommand(targetId, 'test-hit'));
+    ws.send(JSON.stringify(Message.targetCommand(targetId, 'test-hit')));
     updateTargetStatus(targetId, 'Waiting for hit...');
 };
 
-const gameModeSelect = document.getElementById('game-mode-select');
-const startGameButton = document.getElementById('start-game-button');
-const whackAMoleSettings = document.getElementById('whack-a-mole-settings');
-const wamGameLengthInput = document.getElementById('wam-game-length');
-const wamTargetTimeoutInput = document.getElementById('wam-target-timeout');
-const precisionChallengeSettings = document.getElementById('precision-challenge-settings');
-const pcGameLengthInput = document.getElementById('pc-game-length');
-
-const distractionAlleySettings = document.getElementById('distraction-alley-settings');
-const daGameLengthInput = document.getElementById('da-game-length');
-const teamColorsSettings = document.getElementById('team-colors-settings');
-const tcGameLengthInput = document.getElementById('tc-game-length');
-const aiCommentaryOption = document.getElementById('ai-commentary-option');
-const enableAiCommentaryCheckbox = document.getElementById('enable-ai-commentary');
-
-// Initial message to server to check AI commentary availability
-ws.onopen = () => {
-    ws.send(JSON.stringify(Message.getAiAvailability()));
-};
-
-ws.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    const { type, payload } = data;
-
-    switch (type) {
-        case MessageType.S2C_AI_AVAILABILITY:
-            if (payload.available) {
-                aiCommentaryOption.style.display = 'block';
-            } else {
-                aiCommentaryOption.style.display = 'none';
-            }
-            break;
-        case MessageType.S2C_TARGET_LIST_UPDATE:
-            const onlineTargets = new Set(payload.targetList);
-
-            // Add new targets
-            for (const targetId of onlineTargets) {
-                if (!targets[targetId]) {
-                    targets[targetId] = { online: true };
-                }
-                targets[targetId].online = true;
-                renderTargetCard(targetId);
-            }
-
-            // Mark disconnected targets as offline
-            for (const targetId in targets) {
-                if (!onlineTargets.has(targetId)) {
-                    targets[targetId].online = false;
-                }
-                renderTargetCard(targetId);
-            }
-            break;
-        case MessageType.S2C_TARGET_LOG_MESSAGE:
-            const { from, message } = payload;
-            if (message.startsWith('HIT')) {
-                updateTargetStatus(from, 'HIT Detected!', 'hit');
-            } else if (message.startsWith('EXPIRED')) {
-                updateTargetStatus(from, 'Hit Test EXPIRED', 'expired');
-            } else if (message.includes('Auto-calibration complete')) {
-                const thresholdMatch = message.match(/New threshold: (\d+)/);
-                if (thresholdMatch && thresholdMatch[1]) {
-                    updateTargetStatus(from, `Calibrated! Threshold: ${thresholdMatch[1]}`, 'hit');
-                } else {
-                    updateTargetStatus(from, 'Calibration Finished', 'hit');
-                }
-            }
-            break;
-    }
-};
+// --- Event Listeners ---
 
 gameModeSelect.addEventListener('change', () => {
-    // Hide all game settings initially
-    document.querySelectorAll('.game-settings').forEach(el => {
-        el.style.display = 'none';
-    });
-
-    if (gameModeSelect.value === 'whack_a_mole') {
-        whackAMoleSettings.style.display = 'block';
-    } else if (gameModeSelect.value === 'precision_challenge') {
-        precisionChallengeSettings.style.display = 'block';
-    } else if (gameModeSelect.value === 'distraction_alley') {
-        distractionAlleySettings.style.display = 'block';
-    } else if (gameModeSelect.value === 'team_colors') {
-        teamColorsSettings.style.display = 'block';
-    } else if (gameModeSelect.value === 'demo') {
-        // No settings for demo mode
-    }
+    renderGameOptions(gameModeSelect.value);
 });
 
 startGameButton.addEventListener('click', () => {
     const selectedGame = gameModeSelect.value;
-    const aiCommentary = aiCommentaryOption.style.display === 'block' && enableAiCommentaryCheckbox.checked;
-    let options = {};
+    const aiCommentary = enableAiCommentaryCheckbox.checked;
+    const options = {};
 
-    if (selectedGame === 'whack_a_mole') {
-        options.gameLength = wamGameLengthInput.value;
-        options.targetTimeout = wamTargetTimeoutInput.value;
-    } else if (selectedGame === 'precision_challenge') {
-        options.gameLength = pcGameLengthInput.value;
-    } else if (selectedGame === 'distraction_alley') {
-        options.gameLength = daGameLengthInput.value;
-    } else if (selectedGame === 'team_colors') {
-        options.gameLength = tcGameLengthInput.value;
-    }
+    const optionInputs = gameOptionsContainer.querySelectorAll('input');
+    optionInputs.forEach(input => {
+        options[input.name] = input.value;
+    });
 
     ws.send(JSON.stringify(Message.startGame(selectedGame, options, aiCommentary)));
     window.location.href = `/game?game=${selectedGame}`;
 });
-
-// Initial check for settings display
-gameModeSelect.dispatchEvent(new Event('change'));

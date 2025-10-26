@@ -34,7 +34,7 @@ import('./assets/protocol.mjs').then(protocol => {
     MessageType = protocol.MessageType;
 });
 const PrecisionChallenge = require('./games/precision_challenge');
-const WhackAMole = require('./games/whack_a_mole');
+// const WhackAMole = require('./games/whack_a_mole'); // Now loaded from src/games
 const QuickDraw = require('./games/quick_draw');
 const Demo = require('./games/demo');
 const SimonSays = require('./games/simon_says');
@@ -65,15 +65,19 @@ if (process.env.GEMINI_API_KEY) {
 }
 
 // --- Game Registry ---
-const gameModes = {
+const newGameModes = require('./src/games');
+
+const oldGameModes = {
     'precision_challenge': PrecisionChallenge,
-    'whack_a_mole': WhackAMole,
     'quick_draw': QuickDraw,
     'demo': Demo,
     'simon_says': SimonSays,
     'distraction_alley': DistractionAlley,
     'team_colors': TeamColors
 };
+
+const gameModes = { ...oldGameModes, ...newGameModes };
+console.log('LOG: All game modes loaded.');
 
 // --- Helper Functions ---
 function broadcastToWeb(message) {
@@ -178,31 +182,49 @@ const tcpServer = net.createServer((socket) => {
 
 // --- Web Server (for the UI) ---
 const webServer = http.createServer((req, res) => {
-    let page;
     const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
-    switch (parsedUrl.pathname) {
-        case '/':
-            page = 'index.html';
-            break;
-        case '/lobby':
-            page = 'lobby.html';
-            break;
-        case '/game':
-            page = 'game.html';
-            break;
-        case '/diagnostics':
-            page = 'diagnostics.html';
-            break;
-        // Add other game pages here as they are refactored
-        default:
-            page = parsedUrl.pathname.substring(1);
-            break;
+    let page = parsedUrl.pathname;
+    let rootDir = '';
+
+    if (parsedUrl.pathname === '/games/options') {
+        const allOptions = {};
+        for (const gameId in gameModes) {
+            const gameClass = gameModes[gameId];
+            if (typeof gameClass.getOptions === 'function') {
+                allOptions[gameId] = gameClass.getOptions();
+            }
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(allOptions));
+        return;
     }
 
-    const filePath = path.join(__dirname, 'assets', page);
+    // Route requests to the correct directory (assets or public)
+    if (page.startsWith('/games/')) {
+        rootDir = path.join(__dirname, 'public');
+    } else {
+        rootDir = path.join(__dirname, 'assets');
+        // For top-level pages, map them to their html files
+        switch (page) {
+            case '/':
+                page = '/index.html';
+                break;
+            case '/lobby':
+                page = '/lobby.html';
+                break;
+            case '/game':
+                page = '/game.html';
+                break;
+            case '/diagnostics':
+                page = '/diagnostics.html';
+                break;
+        }
+    }
+
+    const filePath = path.join(rootDir, page);
 
     // Security check to prevent directory traversal
-    if (!filePath.startsWith(path.join(__dirname, 'assets'))) {
+    if (!filePath.startsWith(rootDir)) {
         res.writeHead(403);
         res.end('Forbidden');
         return;

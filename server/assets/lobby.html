@@ -27,7 +27,7 @@
     <p>Connected targets will appear below. Use the buttons to test them before starting a game.</p>
 
     <div class="command-group">
-                <select id="game-mode-select">
+        <select id="game-mode-select">
             <option value="precision_challenge">Precision Challenge</option>
             <option value="quick_draw">Quick Draw</option>
             <option value="whack_a_mole">Whack-a-Mole</option>
@@ -36,25 +36,7 @@
             <option value="team_colors">Team Colors</option>
             <option value="demo">Demo</option>
         </select>
-        <div id="precision-challenge-settings" class="game-settings">
-            <label for="pc-game-length">Game Length (seconds)</label>
-            <input type="number" id="pc-game-length" value="30">
-        </div>
-        <div id="whack-a-mole-settings" class="game-settings">
-            <label for="wam-game-length">Game Length (seconds)</label>
-            <input type="number" id="wam-game-length" value="15">
-            <label for="wam-target-timeout">Target Activation Time (ms)</label>
-            <input type="number" id="wam-target-timeout" value="1000">
-        </div>
-        
-        <div id="distraction-alley-settings" class="game-settings">
-            <label for="da-game-length">Game Length (seconds)</label>
-            <input type="number" id="da-game-length" value="30">
-        </div>
-        <div id="team-colors-settings" class="game-settings">
-            <label for="tc-game-length">Game Length (seconds)</label>
-            <input type="number" id="tc-game-length" value="30">
-        </div>
+        <div id="game-options-container" class="game-settings"></div>
         <div class="button-group">
             <div id="ai-commentary-option" style="display: none;">
                 <input type="checkbox" id="enable-ai-commentary">
