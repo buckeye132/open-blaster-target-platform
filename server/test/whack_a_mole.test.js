@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You maye obtain a copy of the License at
+ * You may obtain a copy of the License at
  *
  * http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-const WhackAMole = require('../games/whack_a_mole');
+const WhackAMole = require('../src/games/whack_a_mole');
 const StubTarget = require('./stub_target');
 
 jest.useFakeTimers();
@@ -27,9 +27,11 @@ describe('Whack-A-Mole Game Mode', () => {
         target1 = new StubTarget('stub1');
         target2 = new StubTarget('stub2');
         targets = [target1, target2];
-        const options = { gameLength: 10000, targetTimeout: 1000 };
+        // Game length is in seconds, target timeout is in seconds
+        const options = { gameLength: 10, targetTimeout: 1 }; 
         game = new WhackAMole(clients, targets, options);
 
+        // Simulate the server listening for hits from the targets
         targets.forEach(target => {
             target.on('hit', (hitData) => game.onHit(target, hitData));
             target.on('expired', (expiredData) => game.onExpired(target, expiredData));
@@ -40,27 +42,31 @@ describe('Whack-A-Mole Game Mode', () => {
         const gameOverCallback = jest.fn();
         game.on('gameOver', gameOverCallback);
 
-        game.start();
+        await game.start();
 
-        await jest.advanceTimersByTimeAsync(10000);
+        // Advance timers by the game length
+        await jest.advanceTimersByTimeAsync(10 * 1000);
 
-        expect(gameOverCallback).toHaveBeenCalled();
+        expect(gameOverCallback).toHaveBeenCalledWith(0);
     });
 
     it('should increase the score when a target is hit', async () => {
-        target1.queueHit(100, 'positive');
-        target2.queueHit(100, 'positive');
-        game.start();
-
+        await game.start();
+        
+        const activeTarget = game.activeTarget;
+        activeTarget.queueHit(100, 'positive');
+        
+        // Simulate the hit by advancing the timer past the reaction time
         await jest.advanceTimersByTimeAsync(100);
 
         expect(game.score).toBe(1);
     });
 
     it('should activate a new target after a hit', async () => {
-        game.start();
+        await game.start();
         const firstTarget = game.activeTarget;
         firstTarget.queueHit(100, 'positive');
+        
         await jest.advanceTimersByTimeAsync(100);
 
         const secondTarget = game.activeTarget;
@@ -69,10 +75,10 @@ describe('Whack-A-Mole Game Mode', () => {
     });
 
     it('should activate a new target when the active target expires', async () => {
-        game.start();
+        await game.start();
         const firstTarget = game.activeTarget;
-        firstTarget.queueMiss('positive');
-
+        
+        // Let the target expire by advancing the timer past the targetTimeout
         await jest.advanceTimersByTimeAsync(1000);
 
         const secondTarget = game.activeTarget;
@@ -80,11 +86,14 @@ describe('Whack-A-Mole Game Mode', () => {
         expect(game.score).toBe(0);
     });
 
-    it('should handle having no targets gracefully', () => {
+    it('should handle having no targets gracefully', async () => {
         const gameOverCallback = jest.fn();
         game.targets = [];
         game.on('gameOver', gameOverCallback);
-        game.start();
-        expect(gameOverCallback).toHaveBeenCalled();
+        
+        await game.start();
+        
+        // The game should stop immediately and emit gameOver with a score of 0
+        expect(gameOverCallback).toHaveBeenCalledWith(0);
     });
 });

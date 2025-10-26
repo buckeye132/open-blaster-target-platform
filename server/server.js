@@ -29,17 +29,10 @@ require('dotenv').config();
 // Import custom classes
 const { Target, VisualScriptBuilder, Animations } = require('./target');
 let Message, MessageType;
-import('./assets/protocol.mjs').then(protocol => {
+import('./src/games/protocol.mjs').then(protocol => {
     Message = protocol.Message;
     MessageType = protocol.MessageType;
 });
-const PrecisionChallenge = require('./games/precision_challenge');
-const WhackAMole = require('./games/whack_a_mole');
-const QuickDraw = require('./games/quick_draw');
-const Demo = require('./games/demo');
-const SimonSays = require('./games/simon_says');
-const DistractionAlley = require('./games/distraction_alley');
-const TeamColors = require('./games/team_colors');
 
 // --- Configuration ---
 const WEB_PORT = 8080;
@@ -65,15 +58,8 @@ if (process.env.GEMINI_API_KEY) {
 }
 
 // --- Game Registry ---
-const gameModes = {
-    'precision_challenge': PrecisionChallenge,
-    'whack_a_mole': WhackAMole,
-    'quick_draw': QuickDraw,
-    'demo': Demo,
-    'simon_says': SimonSays,
-    'distraction_alley': DistractionAlley,
-    'team_colors': TeamColors
-};
+const gameModes = require('./src/games');
+console.log('LOG: All game modes loaded.');
 
 // --- Helper Functions ---
 function broadcastToWeb(message) {
@@ -178,31 +164,48 @@ const tcpServer = net.createServer((socket) => {
 
 // --- Web Server (for the UI) ---
 const webServer = http.createServer((req, res) => {
-    let page;
     const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
-    switch (parsedUrl.pathname) {
-        case '/':
-            page = 'index.html';
-            break;
-        case '/lobby':
-            page = 'lobby.html';
-            break;
-        case '/game':
-            page = 'game.html';
-            break;
-        case '/diagnostics':
-            page = 'diagnostics.html';
-            break;
-        // Add other game pages here as they are refactored
-        default:
-            page = parsedUrl.pathname.substring(1);
-            break;
+    let page = parsedUrl.pathname;
+    let rootDir = '';
+
+    // API Endpoints
+    if (parsedUrl.pathname === '/games/options') {
+        const allOptions = {};
+        for (const gameId in gameModes) {
+            const gameClass = gameModes[gameId];
+            if (typeof gameClass.getOptions === 'function') {
+                allOptions[gameId] = gameClass.getOptions();
+            }
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(allOptions));
+        return;
     }
 
-    const filePath = path.join(__dirname, 'assets', page);
+    if (parsedUrl.pathname === '/games/list') {
+        const gameList = Object.keys(gameModes);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(gameList));
+        return;
+    }
+
+    // Route requests to the correct directory
+    if (page.startsWith('/games/')) { // New game assets (whack_a_mole.html, etc.)
+        rootDir = path.join(__dirname, 'public');
+    } else if (page === '/lobby' || page === '/game' || page === '/style.css' || page === '/lobby_client.mjs' || page === '/game_client.mjs' || page === '/protocol.mjs') {
+        rootDir = path.join(__dirname, 'src', 'games');
+        if (page === '/lobby') page = '/lobby.html';
+        if (page === '/game') page = '/game.html';
+    } else { // Legacy pages and assets
+        rootDir = path.join(__dirname, 'assets');
+        if (page === '/') page = '/index.html';
+        if (page === '/diagnostics') page = '/diagnostics.html';
+    }
+
+    const filePath = path.join(rootDir, page);
 
     // Security check to prevent directory traversal
-    if (!filePath.startsWith(path.join(__dirname, 'assets'))) {
+    if (!filePath.startsWith(path.join(__dirname, 'public')) && !filePath.startsWith(path.join(__dirname, 'src', 'games')) && !filePath.startsWith(path.join(__dirname, 'assets'))) {
         res.writeHead(403);
         res.end('Forbidden');
         return;

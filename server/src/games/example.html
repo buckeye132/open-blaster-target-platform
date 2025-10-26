@@ -1,0 +1,75 @@
+<!--
+This is an example file demonstrating how to use the shared game UI components
+to build a game view. You can use this as a starting point for creating your own
+game mode's view.html.
+
+The required CSS classes for these components are defined in server/assets/style.css.
+-->
+
+<!--
+It's a good practice to have a container for your game-specific layout.
+You can add game-specific styles to this container.
+-->
+<style>
+    .my-game-container {
+        /* Add any game-specific styles here */
+        padding: 20px;
+    }
+</style>
+
+<div class="my-game-container">
+    <!--
+    The .game-info-container is a flex container for displaying key game metrics
+    like score, time, or round number.
+    -->
+    <div class="game-info-container">
+        <!--
+        Each metric is placed in an .info-box.
+        -->
+        <div class="info-box">
+            <span class="info-label">Time</span>
+            <span id="time-remaining" class="info-value">--</span>
+        </div>
+        <div class="info-box">
+            <span class="info-label">Score</span>
+            <span id="score" class="info-value">0</span>
+        </div>
+        <div class="info-box">
+            <span class="info-label">Round</span>
+            <span id="round-number" class="info-value">1</span>
+        </div>
+    </div>
+
+    <!--
+    You can add any other custom HTML for your game here.
+    For example, a grid for targets, or a specific instruction panel.
+    -->
+    <div class="my-game-content">
+        <p>Your game's main content goes here.</p>
+    </div>
+
+
+    <!--
+    The .game-overlay is a full-screen element used to display messages
+    that should cover the entire game area, like a countdown or a
+    "Game Over" screen.
+
+    Your client.js script will be responsible for showing and hiding this
+    overlay and its content at the appropriate times.
+    -->
+    <div id="game-overlay" class="game-overlay">
+        <!-- The .countdown class is for the big "3, 2, 1" numbers -->
+        <div id="countdown" class="countdown"></div>
+
+        <!--
+        The .game-over container is for the final summary screen.
+        It's recommended to have a .hidden class on it by default.
+        -->
+        <div id="game-over-message" class="game-over hidden">
+            <h2>Game Over</h2>
+            <p>Final Score: <span id="final-score"></span></p>
+            <!-- You can add more stats here -->
+            <p>High Score: <span id="high-score"></span></p>
+        </div>
+    </div>
+</div>
