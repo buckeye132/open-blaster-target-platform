@@ -1,21 +1,5 @@
-/*
- * Copyright 2025 https://github.com/buckeye132
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-const QuickDraw = require('../../games/quick_draw');
-const StubTarget = require('./stub_target');
+const QuickDraw = require('../../src/games/quick_draw');
+const StubTarget = require('../stub_target');
 
 jest.useFakeTimers();
 
@@ -27,7 +11,7 @@ describe('Quick Draw Game Mode', () => {
         target1 = new StubTarget('stub1');
         target2 = new StubTarget('stub2');
         targets = [target1, target2];
-        game = new QuickDraw(clients, targets);
+        game = new QuickDraw(clients, targets, {});
 
         targets.forEach(target => {
             target.on('hit', (hitData) => game.onHit(target, hitData));
@@ -36,7 +20,7 @@ describe('Quick Draw Game Mode', () => {
     });
 
     it('should activate a random target after a delay', async () => {
-        game.start();
+        game.onGameStart();
         expect(game.activeTarget).toBeNull();
 
         await jest.advanceTimersByTimeAsync(5000); // Max delay is 5000ms
@@ -47,53 +31,52 @@ describe('Quick Draw Game Mode', () => {
     });
 
     it('should end the game when a target is hit', async () => {
-        const gameOverCallback = jest.fn();
-        game.on('gameOver', gameOverCallback);
-
+        const stopSpy = jest.spyOn(game, 'stop');
+        
         target1.queueHit(150, 'stub1');
         target2.queueHit(150, 'stub2');
 
-        game.start();
-        await jest.advanceTimersByTimeAsync(5000);
-        await jest.advanceTimersByTimeAsync(150);
+        game.onGameStart();
+        
+        await jest.advanceTimersByTimeAsync(5000); // initial delay
+        await jest.advanceTimersByTimeAsync(150); // reaction time
 
-        expect(gameOverCallback).toHaveBeenCalledWith('150 ms');
+        expect(stopSpy).toHaveBeenCalled();
+        expect(game.winnerInfo).not.toBeNull();
     });
 
     it('should end the game if the target expires', async () => {
-        const gameOverCallback = jest.fn();
-        game.on('gameOver', gameOverCallback);
+        const stopSpy = jest.spyOn(game, 'stop');
 
-        game.start();
+        game.onGameStart();
         await jest.advanceTimersByTimeAsync(5000); // Initial delay
 
         const activeTarget = game.activeTarget;
         activeTarget.queueMiss(activeTarget.id);
         await jest.advanceTimersByTimeAsync(10000); // Target timeout
 
-        expect(gameOverCallback).toHaveBeenCalledWith('Missed');
+        expect(stopSpy).toHaveBeenCalled();
     });
 
     it('should ignore hits on the wrong target', async () => {
-        const gameOverCallback = jest.fn();
-        game.on('gameOver', gameOverCallback);
+        const stopSpy = jest.spyOn(game, 'stop');
 
-        game.start();
+        game.onGameStart();
         await jest.advanceTimersByTimeAsync(5000);
 
         const activeTarget = game.activeTarget;
         const wrongTarget = targets.find(t => t !== activeTarget);
-        wrongTarget.queueHit(100, wrongTarget.id);
-        await jest.advanceTimersByTimeAsync(100);
+        
+        // Manually emit hit from wrong target
+        wrongTarget.emit('hit', { reactionTime: 100, value: wrongTarget.id });
 
-        expect(gameOverCallback).not.toHaveBeenCalled();
+        expect(stopSpy).not.toHaveBeenCalled();
     });
 
     it('should handle having no targets gracefully', () => {
-        const gameOverCallback = jest.fn();
+        const stopSpy = jest.spyOn(game, 'stop');
         game.targets = [];
-        game.on('gameOver', gameOverCallback);
-        game.start();
-        expect(gameOverCallback).toHaveBeenCalled();
+        game.onGameStart();
+        expect(stopSpy).toHaveBeenCalled();
     });
 });
