@@ -49,7 +49,6 @@ class WhackAMole extends Game {
     onGameEnd() {
         console.log("LOG: Whack-a-Mole finished.");
         this.broadcast('gameOver', { finalScore: this.score });
-        this.emit('gameOver', this.score); // for server.js compatibility
     }
 
     pickAndActivateTarget() {

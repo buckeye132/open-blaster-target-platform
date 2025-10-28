@@ -38,7 +38,7 @@ class Game extends EventEmitter {
         super();
         this.clients = clients;
         this.targets = targets;
-        this.gameLength = (parseFloat(options.gameLength) || 30) * 1000; // In milliseconds
+        this.gameLength = parseFloat(options.gameLength ?? 30) * 1000; // In milliseconds
         this.gameTimeout = null;
         this.gameInterval = null;
         this.state = 'pending'; // 'pending', 'running', 'finished'
@@ -138,7 +138,7 @@ class Game extends EventEmitter {
         if (typeof this.onGameEnd === 'function') {
             this.onGameEnd();
         }
-        this.emit('finished');
+        this.emit('gameOver');
     }
 
     /**

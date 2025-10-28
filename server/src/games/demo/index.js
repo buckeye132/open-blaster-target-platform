@@ -1,38 +1,23 @@
-/*
- * Copyright 2025 https://github.com/buckeye132
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-const Game = require('./base');
-const { VisualScriptBuilder, Animations } = require('../target');
-
+const Game = require('../base_game');
+const { VisualScriptBuilder, Animations } = require('../../../target');
 
 class Demo extends Game {
-    constructor(clients, targets) {
-        super(clients, targets);
-        this.state = 'idle';
+    constructor(clients, targets, options) {
+        // Demo game has no explicit end time, it ends when the sequence is complete.
+        // Set gameLength to 0 to prevent the base game from setting a timeout.
+        super(clients, targets, { ...options, gameLength: 0 });
         this.activeTarget = null;
-        this.gameTimeout = null;
+        this.demoState = 'idle'; // Game-specific state
+        this.gameTimeout = null; // To be used for individual steps
     }
 
-    async start() {
+    async onGameStart() {
         console.log("LOG: Starting Demo");
-        this.broadcast('gameStart', { message: 'Starting Demo Mode...' });
+        this.broadcast('update', { message: 'Starting Demo Mode...' });
 
         if (this.targets.length === 0) {
-            this.broadcast('gameOver', { message: 'No targets connected!' });
-            this.emit('gameOver');
+            this.broadcast('update', { message: 'No targets connected!' });
+            this.stop();
             return;
         }
 
@@ -40,23 +25,39 @@ class Demo extends Game {
         await this.runSingleHitSequence();
         await this.runMultiHitSequence();
 
-        this.broadcast('gameOver', { message: 'Demo complete!' });
-        this.emit('gameOver');
+        this.broadcast('update', { message: 'Demo complete!' });
+        this.stop();
+    }
+
+    onGameEnd() {
+        console.log("LOG: Demo finished.");
+        if (this.gameTimeout) {
+            clearTimeout(this.gameTimeout);
+        }
+        this.targets.forEach(target => target.off());
     }
 
     async runAnimationSequence() {
-        this.broadcast('gameUpdate', { message: 'Cycling animations...' });
+        this.broadcast('update', { message: 'Cycling animations...' });
         const animationKeys = Object.keys(Animations);
         const numTargets = this.targets.length;
         for (let i = 0; i < animationKeys.length; i += numTargets) {
             const batch = animationKeys.slice(i, i + numTargets);
+            
+            const activeAnimations = [];
             const promises = batch.map((animation, index) => {
                 const target = this.targets[index];
                 if (target) {
-                    this.broadcast('gameUpdate', { message: `Animation: ${animation}` });
+                    activeAnimations.push(animation);
                     return target.display(1, new VisualScriptBuilder().animation(1000, Animations[animation], 255, 255, 255));
                 }
+                return Promise.resolve();
             });
+
+            if (activeAnimations.length > 0) {
+                this.broadcast('update', { message: `Animations: ${activeAnimations.join(', ')}` });
+            }
+
             await Promise.all(promises);
             await new Promise(resolve => setTimeout(resolve, 1000));
         }
@@ -64,14 +65,16 @@ class Demo extends Game {
 
     runSingleHitSequence() {
         return new Promise(resolve => {
-            this.broadcast('gameUpdate', { message: 'Hit the target!' });
-            this.state = 'single_hit';
+            this.broadcast('update', { message: 'Hit the target!' });
+            this.demoState = 'single_hit';
             this.activeTarget = this.targets[Math.floor(Math.random() * this.targets.length)];
             this.activeTarget.configureHit('demo_hit', 1, 'NONE', new VisualScriptBuilder().animation(1000, Animations.THEATER_CHASE, 0, 0, 0));
             this.activeTarget.activate(10000, 'single_hit', 'demo_hit', new VisualScriptBuilder().animation(1000, Animations.PULSE, 255, 0, 0));
             this.gameTimeout = setTimeout(() => {
-                this.activeTarget.off();
-                resolve();
+                if (this.demoState === 'single_hit') {
+                    this.activeTarget.off();
+                    resolve();
+                }
             }, 10000);
             this.once('single_hit_done', resolve);
         });
@@ -79,36 +82,29 @@ class Demo extends Game {
 
     runMultiHitSequence() {
         return new Promise(resolve => {
-            this.broadcast('gameUpdate', { message: 'Hit the target 5 times!' });
-            this.state = 'multi_hit';
+            this.broadcast('update', { message: 'Hit the target 5 times!' });
+            this.demoState = 'multi_hit';
             this.activeTarget = this.targets[Math.floor(Math.random() * this.targets.length)];
             this.activeTarget.configureHit('demo_multi_hit', 5, 'DECREMENTAL', new VisualScriptBuilder().animation(1500, Animations.THEATER_CHASE, 0, 0, 0));
             this.activeTarget.configureInterimHit('demo_multi_hit', new VisualScriptBuilder().solid(150, 255, 255, 255));
             this.activeTarget.activate(20000, 'multi_hit', 'demo_multi_hit', new VisualScriptBuilder().animation(1000, Animations.PULSE, 0, 0, 255));
             this.gameTimeout = setTimeout(() => {
-                this.activeTarget.off();
-                resolve();
+                if (this.demoState === 'multi_hit') {
+                    this.activeTarget.off();
+                    resolve();
+                }
             }, 20000);
             this.once('multi_hit_done', resolve);
         });
     }
 
-    stop() {
-        console.log("LOG: Stopping Demo");
-        if (this.gameTimeout) {
-            clearTimeout(this.gameTimeout);
-        }
-        this.targets.forEach(target => target.off());
-        this.emit('gameOver');
-    }
-
     handleHit(target, { value }) {
         if (target !== this.activeTarget) return;
 
-        if (this.state === 'single_hit' && value === 'single_hit') {
+        if (this.demoState === 'single_hit' && value === 'single_hit') {
             clearTimeout(this.gameTimeout);
             this.emit('single_hit_done');
-        } else if (this.state === 'multi_hit' && value === 'multi_hit') {
+        } else if (this.demoState === 'multi_hit' && value === 'multi_hit') {
             clearTimeout(this.gameTimeout);
             this.emit('multi_hit_done');
         }
@@ -117,9 +113,9 @@ class Demo extends Game {
     handleExpired(target, value) {
         if (target !== this.activeTarget) return;
 
-        if (this.state === 'single_hit' && value === 'single_hit') {
+        if (this.demoState === 'single_hit' && value === 'single_hit') {
             this.emit('single_hit_done');
-        } else if (this.state === 'multi_hit' && value === 'multi_hit') {
+        } else if (this.demoState === 'multi_hit' && value === 'multi_hit') {
             this.emit('multi_hit_done');
         }
     }

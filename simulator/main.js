@@ -113,7 +113,8 @@ app.whenReady().then(() => {
           
           updateTargetState(mainWindow, targetId, 'DISPLAYING', visualInfo);
           setTimeout(() => {
-              if (targetStates.has(targetId)) {
+              const currentState = targetStates.get(targetId);
+              if (currentState && currentState.visualInfo === visualInfo) {
                   updateTargetState(mainWindow, targetId, 'IDLE');
               }
           }, duration);
@@ -128,7 +129,8 @@ app.whenReady().then(() => {
               updateTargetState(mainWindow, targetId, 'DISPLAYING', visualInfo);
               // Briefly show interim animation then return to ready
               setTimeout(() => {
-                  if (targetStates.has(targetId)) {
+                  const currentState = targetStates.get(targetId);
+                  if (currentState && currentState.visualInfo === visualInfo) {
                       // Re-apply the original 'ON' visual
                       const originalConfig = state.hitConfigs.get(state.activeHitConfigId);
                       const originalVisualInfo = originalConfig ? parseVisualScript(originalConfig.onVisual) : null;
@@ -303,7 +305,8 @@ function handleServerCommand(win, targetId, command) {
             updateTargetState(win, targetId, 'DISPLAYING', visualInfo);
 
             setTimeout(() => {
-                if(state.currentState === 'DISPLAYING') {
+                const currentState = targetStates.get(targetId);
+                if (currentState && currentState.visualInfo === visualInfo) {
                     updateTargetState(win, targetId, 'IDLE');
                 }
             }, duration);

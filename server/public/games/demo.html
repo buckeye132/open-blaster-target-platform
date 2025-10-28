@@ -1,0 +1,28 @@
+<style>
+    .demo-container {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        box-sizing: border-box;
+        text-align: center;
+    }
+</style>
+
+<div class="demo-container">
+    <div class="game-info-container">
+        <div class="info-box">
+            <span id="demo-message" class="info-value">Waiting to start...</span>
+        </div>
+    </div>
+    <div id="game-overlay" class="game-overlay">
+        <div id="countdown" class="countdown"></div>
+        <div id="game-over-message" class="game-over hidden">
+            <h2>Demo Complete</h2>
+        </div>
+    </div>
+</div>
