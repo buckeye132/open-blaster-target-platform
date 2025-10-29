@@ -1,21 +1,5 @@
-/*
- * Copyright 2025 https://github.com/buckeye132
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-const Game = require('./base');
-const { VisualScriptBuilder, Animations } = require('../target');
+const Game = require('../base_game');
+const { VisualScriptBuilder, Animations } = require('../../../target');
 
 const STARTING_TIMEOUT = 1500;
 const TIMEOUT_STEP = 150;
@@ -30,20 +14,15 @@ const FAST_REACTION = 900;
 
 class PrecisionChallenge extends Game {
     constructor(clients, targets, options) {
-        super(clients, targets);
+        super(clients, targets, options);
         this.score = 0;
-        this.timeLeft = options.gameLength || 30;
         this.targetTimeout = STARTING_TIMEOUT;
         this.consecutiveFastHits = 0;
         this.hitFlurryActive = false;
-        this.gameInterval = null;
         this.activeTargets = new Map();
     }
 
-    start() {
-        console.log("LOG: Starting Precision Challenge");
-        this.broadcast('gameStart', { timeLeft: this.timeLeft });
-
+    onGameStart() {
         this.targets.forEach(target => {
             target.configureHit('positive', 1, 'NONE', new VisualScriptBuilder().solid(250, 0, 255, 0));
             target.configureHit('negative', 1, 'NONE', new VisualScriptBuilder().solid(250, 255, 0, 0));
@@ -51,31 +30,15 @@ class PrecisionChallenge extends Game {
             target.configureInterimHit('flurry_hit', new VisualScriptBuilder().solid(150, 255, 255, 255));
         });
 
-        this.gameInterval = setInterval(() => this.tick(), 1000);
         this.activateRandomTarget();
     }
 
-    stop() {
-        console.log("LOG: Stopping Precision Challenge");
-        clearInterval(this.gameInterval);
+    onGameEnd() {
         this.activeTargets.forEach((_state, target) => {
             target.off();
         });
         this.activeTargets.clear();
         this.broadcast('gameOver', { finalScore: this.score });
-        this.emit('gameOver', this.score);
-    }
-
-    tick() {
-        if (this.hitFlurryActive) return;
-
-        this.timeLeft--;
-        this.broadcast('updateTimer', { timeLeft: this.timeLeft });
-        this.emit('timeUpdate', this.timeLeft);
-
-        if (this.timeLeft <= 0) {
-            this.stop();
-        }
     }
 
     activateRandomTarget() {
@@ -98,7 +61,6 @@ class PrecisionChallenge extends Game {
     }
 
     handleHit(target, { reactionTime, value }) {
-        console.log(`[PrecisionChallenge] handleHit: target=${target.id}, value=${value}`);
         if (!this.activeTargets.has(target)) return;
 
         if (this.hitFlurryActive) {
@@ -113,9 +75,6 @@ class PrecisionChallenge extends Game {
                 this.score += points;
                 this.targetTimeout = Math.max(MIN_TIMEOUT, this.targetTimeout - (TIMEOUT_STEP * (reactionTime < FAST_REACTION ? 1 : -1)));
                 this.consecutiveFastHits = reactionTime < FAST_REACTION ? this.consecutiveFastHits + 1 : 0;
-                console.log(`Reaction Time: ${reactionTime}`);
-                console.log(`New timeout: ${this.targetTimeout}`);
-                console.log(`Consecutive fast: ${this.consecutiveFastHits}`);
             } else if (value === 'negative') {
                 this.score -= 500;
                 this.targetTimeout += TIMEOUT_STEP;
@@ -132,7 +91,6 @@ class PrecisionChallenge extends Game {
     }
 
     handleExpired(target, value) {
-        console.log(`[PrecisionChallenge] handleExpired: target=${target.id}, value=${value}, currentTimeout=${this.targetTimeout}, TIMEOUT_STEP=${TIMEOUT_STEP}`);
         if (!this.activeTargets.has(target)) return;
 
         if (this.hitFlurryActive) return;
@@ -149,9 +107,9 @@ class PrecisionChallenge extends Game {
     }
 
     triggerHitFlurry() {
-        console.log("LOG: Triggering Hit Flurry!");
         this.hitFlurryActive = true;
         this.consecutiveFastHits = 0;
+        this.pauseTimer();
         this.broadcast('hitFlurryStart');
         this.emit('customEvent', 'HIT_FLURRY: START');
 
@@ -173,7 +131,6 @@ class PrecisionChallenge extends Game {
 
     endHitFlurry() {
         if (!this.hitFlurryActive) return;
-        console.log("LOG: Ending Hit Flurry.");
         this.emit('customEvent', 'HIT_FLURRY: END');
         this.hitFlurryActive = false;
 
@@ -182,6 +139,7 @@ class PrecisionChallenge extends Game {
         });
         this.activeTargets.clear();
 
+        this.resumeTimer();
         this.broadcast('hitFlurryEnd');
         this.activateRandomTarget();
     }

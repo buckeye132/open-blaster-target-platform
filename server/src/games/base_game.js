@@ -42,6 +42,9 @@ class Game extends EventEmitter {
         this.gameTimeout = null;
         this.gameInterval = null;
         this.state = 'pending'; // 'pending', 'running', 'finished'
+        this.timeRemaining = this.gameLength;
+        this.isPaused = true;
+        this.lastTick = 0;
     }
 
     /**
@@ -94,15 +97,7 @@ class Game extends EventEmitter {
 
         if (this.gameLength > 0 && isFinite(this.gameLength)) {
             console.log(`LOG: Game starting. Will run for ${this.gameLength / 1000} seconds.`);
-            let remainingTime = this.gameLength;
-            this.broadcast('gameTick', { remainingTime: remainingTime / 1000 });
-
-            this.gameInterval = setInterval(() => {
-                remainingTime -= 1000;
-                this.broadcast('gameTick', { remainingTime: remainingTime / 1000 });
-            }, 1000);
-
-            this.gameTimeout = setTimeout(() => this.stop(), this.gameLength);
+            this.resumeTimer();
         } else {
             console.log('LOG: Game starting with no time limit.');
         }
@@ -121,14 +116,10 @@ class Game extends EventEmitter {
         if (this.state !== 'running') {
             return;
         }
-        this.state = 'finished';
         console.log("LOG: Game stopping.");
-        if (this.gameTimeout) {
-            clearTimeout(this.gameTimeout);
-        }
-        if (this.gameInterval) {
-            clearInterval(this.gameInterval);
-        }
+
+        this.pauseTimer();
+        this.state = 'finished';
 
         // Turn off all targets
         this.targets.forEach(target => target.off());
@@ -165,6 +156,33 @@ class Game extends EventEmitter {
         if (typeof this.handleExpired === 'function') {
             this.handleExpired(target, value);
         }
+    }
+
+    pauseTimer() {
+        if (this.isPaused || this.state !== 'running') return;
+        this.isPaused = true;
+        if (this.gameTimeout) clearTimeout(this.gameTimeout);
+        if (this.gameInterval) clearInterval(this.gameInterval);
+        this.timeRemaining -= (Date.now() - this.lastTick);
+    }
+
+    resumeTimer() {
+        if (!this.isPaused || this.state !== 'running') {
+            // If it's the start of the game, isPaused is true, but we should proceed.
+            if (this.timeRemaining !== this.gameLength) return;
+        }
+
+        this.isPaused = false;
+        this.lastTick = Date.now();
+        this.broadcast('gameTick', { remainingTime: Math.ceil(this.timeRemaining / 1000) });
+
+        this.gameInterval = setInterval(() => {
+            if (!this.isPaused) {
+                this.broadcast('gameTick', { remainingTime: Math.ceil((this.timeRemaining - (Date.now() - this.lastTick)) / 1000) });
+            }
+        }, 1000);
+
+        this.gameTimeout = setTimeout(() => this.stop(), this.timeRemaining);
     }
 
     /**

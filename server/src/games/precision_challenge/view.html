@@ -1,0 +1,39 @@
+<style>
+    /* Game-specific styles for precision challenge */
+    .precision-challenge-container {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 20px;
+        box-sizing: border-box;
+    }
+</style>
+
+<div class="precision-challenge-container">
+    <div class="game-info-container">
+        <div class="info-box">
+            <span class="info-label">Time</span>
+            <span id="time-remaining" class="info-value">--</span>
+        </div>
+        <div class="info-box">
+            <span class="info-label">Score</span>
+            <span id="score" class="info-value">0</span>
+        </div>
+        <div class="info-box">
+            <span id="message" class="info-value"></span>
+        </div>
+    </div>
+
+    
+
+    <div id="game-overlay" class="game-overlay hidden">
+        <div id="countdown" class="countdown"></div>
+        <div id="game-over-message" class="game-over hidden">
+            <h2>Game Over</h2>
+            <!-- The client.js will update this innerHTML, so no need for specific spans here -->
+        </div>
+    </div>
+</div>
