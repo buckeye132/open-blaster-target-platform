@@ -1,0 +1,31 @@
+<style>
+    .simon-says-container {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 20px;
+        box-sizing: border-box;
+    }
+</style>
+
+<div class="simon-says-container">
+    <div class="game-info-container">
+        <div class="info-box">
+            <span class="info-label">Round</span>
+            <span id="round-number" class="info-value">1</span>
+        </div>
+    </div>
+
+    <div id="game-status" class="game-status-message"></div>
+
+    <div id="game-overlay" class="game-overlay">
+        <div id="countdown" class="countdown"></div>
+        <div id="game-over-message" class="game-over hidden">
+            <h2>Game Over</h2>
+            <p>You made it to round <span id="final-round"></span></p>
+        </div>
+    </div>
+</div>
